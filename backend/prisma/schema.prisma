@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MatchStatus {
+  PRE_MATCH
+  PAUSED_FOR_COACH
+  FINISHED
+}
+
+enum WorkRate {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PreferredFoot {
+  LEFT
+  RIGHT
+}
+
+enum DatasetType {
+  PLAYER_ATTRIBUTES
+  MATCH_EVENTS
+  SEASON_FORM
+}
+
+enum DatasetImportStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  squads  Squad[]
+  matches Match[]
+}
+
+model Player {
+  id                 String        @id @default(uuid())
+  externalId         String?
+  sourceDataset      String?
+  name               String
+  fullName           String?
+  age                Int?
+  realPosition       String
+  preferredPositions String[]      @default([])
+  rating             Int
+  potential          Int?
+  pac                Int
+  sho                Int
+  pas                Int
+  dri                Int
+  def                Int
+  phy                Int
+  stamina            Int           @default(100)
+  strength           Int?
+  vision             Int?
+  crossing           Int?
+  finishing          Int?
+  interceptions      Int?
+  positioning        Int?
+  preferredFoot      PreferredFoot @default(RIGHT)
+  weakFoot           Int           @default(3)
+  skillMoves         Int           @default(3)
+  attackWorkRate     String
+  defenseWorkRate    String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @default(now()) @updatedAt
+
+  squadPlayers SquadPlayer[]
+
+  @@index([rating])
+  @@index([realPosition])
+  @@index([sourceDataset])
+  @@index([externalId])
+}
+
+model Squad {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  name          String   @default("My Dream Team")
+  formation     String
+  tacticalStyle String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  players SquadPlayer[]
+}
+
+model SquadPlayer {
+  id           String  @id @default(uuid())
+  squadId      String
+  playerId     String
+  rolePosition String
+  isSubstitute Boolean @default(false)
+
+  squad  Squad  @relation(fields: [squadId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@index([squadId])
+  @@index([playerId])
+}
+
+model Match {
+  id            String      @id @default(uuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  status        MatchStatus @default(PRE_MATCH)
+  seed          String
+  venue         String      @default("HOME")
+  opponentName  String
+  userScore     Int         @default(0)
+  opponentScore Int         @default(0)
+  matchStats    Json?
+  lineups       Json?
+  teamVectors   Json?
+  stamina       Json?
+  morale        Json?
+  startedAt     DateTime    @default(now())
+  finishedAt    DateTime?
+  createdAt     DateTime    @default(now())
+
+  snapshots     MatchStateSnapshot[]
+  events        MatchEvent[]
+  substitutions Substitution[]
+  ratings       PlayerMatchRating[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model MatchStateSnapshot {
+  id        String      @id @default(uuid())
+  matchId   String
+  minute    Int
+  status    MatchStatus
+  payload   Json
+  createdAt DateTime    @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, minute])
+}
+
+model MatchEvent {
+  id            String   @id @default(uuid())
+  matchId       String
+  minute        Int
+  team          String
+  type          String
+  zone          String?
+  playerName    String?
+  message       String
+  chanceQuality Float?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, minute])
+}
+
+model Substitution {
+  id              String   @id @default(uuid())
+  matchId         String
+  minute          Int
+  teamId          String
+  playerOutId     String
+  playerInId      String
+  oldPosition     String?
+  newPosition     String?
+  formationBefore String
+  formationAfter  String
+  impactPreview   Json
+  createdAt       DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId, minute])
+}
+
+model PlayerMatchRating {
+  id         String   @id @default(uuid())
+  matchId    String
+  playerId   String
+  playerName String
+  team       String
+  rating     Float
+  goals      Int      @default(0)
+  assists    Int      @default(0)
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId])
+  @@index([playerId])
+}
+
+model MatchCalibrationProfile {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  sourceName    String
+  sourceVersion String?
+  payload       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DatasetImportRun {
+  id            String              @id @default(uuid())
+  datasetType   DatasetType
+  sourceName    String
+  sourceVersion String?
+  sourcePath    String?
+  status        DatasetImportStatus @default(STARTED)
+  rowsRead      Int                 @default(0)
+  rowsImported  Int                 @default(0)
+  rowsSkipped   Int                 @default(0)
+  errorMessage  String?
+  startedAt     DateTime            @default(now())
+  finishedAt    DateTime?
+
+  @@index([datasetType, status])
+}

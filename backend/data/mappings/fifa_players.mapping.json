@@ -1,0 +1,32 @@
+{
+  "name": "fifa_players_default",
+  "fields": {
+    "externalId": ["id", "sofifa_id", "player_id"],
+    "sourceDataset": ["dataset", "source"],
+    "name": ["name", "short_name", "player_name"],
+    "fullName": ["full_name", "long_name"],
+    "age": ["age"],
+    "positions": ["player_positions", "positions"],
+    "bestPosition": ["best_position", "real_position", "position"],
+    "rating": ["overall", "rating", "ovr"],
+    "potential": ["potential"],
+    "pac": ["pac", "pace", "sprint_speed"],
+    "sho": ["sho", "shooting", "shot_power", "finishing"],
+    "pas": ["pas", "passing", "short_passing", "long_passing"],
+    "dri": ["dri", "dribbling", "ball_control", "agility"],
+    "def": ["def", "defending", "standing_tackle", "sliding_tackle", "interceptions"],
+    "phy": ["phy", "physical", "physic", "strength", "aggression"],
+    "stamina": ["stamina"],
+    "strength": ["strength"],
+    "vision": ["vision"],
+    "crossing": ["crossing"],
+    "finishing": ["finishing"],
+    "interceptions": ["interceptions"],
+    "positioning": ["positioning", "attacking_positioning"],
+    "preferredFoot": ["preferred_foot", "foot"],
+    "weakFoot": ["weak_foot", "weakfoot"],
+    "skillMoves": ["skill_moves", "skillmoves"],
+    "attackWorkRate": ["attacking_work_rate", "attack_work_rate", "att_wr"],
+    "defenseWorkRate": ["defensive_work_rate", "defense_work_rate", "def_wr"]
+  }
+}
