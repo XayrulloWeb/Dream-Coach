@@ -27,13 +27,13 @@ export default function MatchAnalysis() {
   if (!report) {
     return (
       <div className="min-h-screen bg-[#050A15] text-white p-6 pb-24">
-        <h1 className="font-['Lexend'] text-2xl">Match Analysis</h1>
-        <p className="mt-3 text-slate-400">No completed match found yet.</p>
+        <h1 className="font-['Lexend'] text-2xl">Разбор матча</h1>
+        <p className="mt-3 text-slate-400">Пока нет завершенных матчей.</p>
         <button
           onClick={() => navigate('/live-match')}
           className="mt-5 rounded-lg border border-emerald-500/70 bg-emerald-500/10 px-4 py-2 text-emerald-300"
         >
-          Go to Live Match
+          Перейти к матчу
         </button>
         <MobileBottomNav active="report" />
       </div>
@@ -59,17 +59,17 @@ export default function MatchAnalysis() {
         </header>
 
         <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Performance Summary</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Сводка по игре</p>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Metric label="Score" value={`${report.score.home}-${report.score.away}`} />
+            <Metric label="Счет" value={`${report.score.home}-${report.score.away}`} />
             <Metric label="xG" value={`${report.stats.home.xg} / ${report.stats.away.xg}`} />
-            <Metric label="Avg Rating" value={avgRating} />
-            <Metric label="MVP" value={report.mvp?.playerName ?? 'N/A'} />
+            <Metric label="Средняя оценка" value={avgRating} />
+            <Metric label="Лучший игрок" value={report.mvp?.name ?? '—'} />
           </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Top Tactical Issues</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Ключевые тактические проблемы</p>
           <div className="mt-3 space-y-2">
             {topIssues.length ? (
               topIssues.map((issue, index) => (
@@ -80,22 +80,22 @@ export default function MatchAnalysis() {
                   </div>
                   <p className="text-sm mt-1 text-slate-300">{issue.message}</p>
                   {issue.suggestedActions.length ? (
-                    <p className="text-xs mt-2 text-emerald-300">Fix: {issue.suggestedActions[0]}</p>
+                    <p className="text-xs mt-2 text-emerald-300">Решение: {issue.suggestedActions[0]}</p>
                   ) : null}
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-400">No tactical alerts.</p>
+              <p className="text-sm text-slate-400">Тактических предупреждений нет.</p>
             )}
           </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Trend (Recent Matches)</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Тренд (последние матчи)</p>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <Metric label="Matches" value={`${history.length}`} />
-            <Metric label="Wins" value={`${history.filter((item) => item.result === 'Win').length}`} />
-            <Metric label="Win Rate" value={`${history.length ? Math.round((history.filter((item) => item.result === 'Win').length / history.length) * 100) : 0}%`} />
+            <Metric label="Матчи" value={`${history.length}`} />
+            <Metric label="Победы" value={`${history.filter((item) => item.result === 'Win').length}`} />
+            <Metric label="Процент побед" value={`${history.length ? Math.round((history.filter((item) => item.result === 'Win').length / history.length) * 100) : 0}%`} />
           </div>
         </section>
 
@@ -103,7 +103,7 @@ export default function MatchAnalysis() {
           onClick={() => navigate('/match-setup')}
           className="w-full rounded-xl bg-[#22C55E] py-3 font-['Lexend'] font-semibold text-[#06210F]"
         >
-          NEXT MATCH SETUP
+          НАСТРОЙКА СЛЕДУЮЩЕГО МАТЧА
         </button>
       </main>
 
@@ -120,3 +120,4 @@ function Metric({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

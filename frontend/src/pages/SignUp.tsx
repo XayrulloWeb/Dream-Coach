@@ -1,6 +1,21 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../lib/api';
+
+function resetLocalProgress() {
+  const keys = [
+    'dc_last_squad_payload',
+    'dc_saved_squads',
+    'dc_match_history',
+    'dc_last_match_report',
+    'dc_active_match_id',
+    'dc_tournament_next_fixture',
+  ];
+
+  for (const key of keys) {
+    localStorage.removeItem(key);
+  }
+}
 
 type SignUpData = {
   username: string;
@@ -25,12 +40,12 @@ export default function SignUp() {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Пароли не совпадают');
       return;
     }
 
     if (!agree) {
-      setError('You must accept Terms of Service and Privacy Policy');
+      setError('Нужно принять условия использования и политику конфиденциальности');
       return;
     }
 
@@ -40,11 +55,12 @@ export default function SignUp() {
         email: formData.email,
         password: formData.password,
       });
+      resetLocalProgress();
       localStorage.setItem('token', response.data.token);
       navigate('/dashboard');
     } catch (err: unknown) {
       const apiError = toApiError(err);
-      setError(apiError.message || 'Something went wrong');
+      setError(apiError.message || 'Что-то пошло не так');
     }
   };
 
@@ -55,14 +71,14 @@ export default function SignUp() {
           <span className="material-symbols-outlined text-[#22c55e] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>sports_soccer</span>
           <span className="text-xl font-black italic text-[#22c55e] tracking-tight font-['Lexend']">DREAM COACH</span>
         </div>
-        <Link to="/login" className="text-[#bccbb9] hover:text-[#4be277] transition-colors">Login</Link>
+        <Link to="/login" className="text-[#bccbb9] hover:text-[#4be277] transition-colors">Вход</Link>
       </header>
 
       <main className="px-5 py-8 flex justify-center">
         <div className="w-full max-w-[28rem]">
           <div className="text-center mb-8">
-            <h1 className="font-['Lexend'] text-4xl font-bold mb-2">Create Your Account</h1>
-            <p className="text-[#bccbb9]">Join thousands of coaches around the world.</p>
+            <h1 className="font-['Lexend'] text-4xl font-bold mb-2">Создай аккаунт</h1>
+            <p className="text-[#bccbb9]">Присоединяйся к тысячам тренеров по всему миру.</p>
           </div>
 
           <div className="rounded-xl p-6 shadow-2xl relative overflow-hidden border border-[#3d4a3d]/50 bg-[#10141599] backdrop-blur-xl">
@@ -71,7 +87,7 @@ export default function SignUp() {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <InputField
                 id="username"
-                label="USERNAME"
+                label="ЛОГИН"
                 icon="person"
                 placeholder="TacticalGenius99"
                 type="text"
@@ -91,7 +107,7 @@ export default function SignUp() {
 
               <InputField
                 id="password"
-                label="PASSWORD"
+                label="ПАРОЛЬ"
                 icon="lock"
                 placeholder="********"
                 type="password"
@@ -102,7 +118,7 @@ export default function SignUp() {
 
               <InputField
                 id="confirm-password"
-                label="CONFIRM PASSWORD"
+                label="ПОДТВЕРДИ ПАРОЛЬ"
                 icon="lock_reset"
                 placeholder="********"
                 type="password"
@@ -120,21 +136,21 @@ export default function SignUp() {
                   className="mt-1 w-4 h-4 rounded border-[#3d4a3d] bg-[#191c1e] accent-[#4be277]"
                 />
                 <label htmlFor="terms" className="text-sm text-[#bccbb9]">
-                  I agree to the <span className="text-[#4be277]">Terms of Service</span> and <span className="text-[#4be277]">Privacy Policy</span>.
+                  Я принимаю <span className="text-[#4be277]">Условия использования</span> и <span className="text-[#4be277]">Политику конфиденциальности</span>.
                 </label>
               </div>
 
               {error && <p className="text-sm text-[#ffb4ab]">{error}</p>}
 
               <button type="submit" className="w-full bg-[#4be277] text-[#003915] font-['Lexend'] text-lg py-4 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(75,226,119,0.2)] hover:bg-[#6bff8f]">
-                <span>Sign Up</span>
+                <span>Зарегистрироваться</span>
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_forward</span>
               </button>
             </form>
 
             <div className="flex items-center gap-4 my-6">
               <div className="h-px bg-[#3d4a3d] flex-grow" />
-              <span className="text-xs text-[#bccbb9] tracking-[0.12em]">OR CONTINUE WITH</span>
+              <span className="text-xs text-[#bccbb9] tracking-[0.12em]">ИЛИ ПРОДОЛЖИТЬ ЧЕРЕЗ</span>
               <div className="h-px bg-[#3d4a3d] flex-grow" />
             </div>
 
@@ -151,7 +167,7 @@ export default function SignUp() {
           </div>
 
           <div className="text-center mt-4">
-            <p className="text-[#bccbb9]">Already have an account? <Link to="/login" className="text-[#4be277] font-semibold hover:underline">Log in</Link></p>
+            <p className="text-[#bccbb9]">Уже есть аккаунт? <Link to="/login" className="text-[#4be277] font-semibold hover:underline">Войти</Link></p>
           </div>
         </div>
       </main>
@@ -190,3 +206,4 @@ function InputField({ id, label, icon, placeholder, type, value, onChange, withE
     </div>
   );
 }
+

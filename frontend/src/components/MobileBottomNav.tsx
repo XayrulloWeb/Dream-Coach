@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export type BottomTab = 'home' | 'squad' | 'match' | 'report' | 'more';
@@ -11,19 +11,18 @@ type TabItem = {
 };
 
 const TABS: TabItem[] = [
-  { key: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
-  { key: 'squad', label: 'Squad', icon: 'groups', path: '/squad-builder' },
-  { key: 'match', label: 'Match', icon: 'sports_soccer', path: '/live-match' },
-  { key: 'report', label: 'Report', icon: 'summarize', path: '/match-report' },
-  { key: 'more', label: 'More', icon: 'menu' },
+  { key: 'home', label: 'Главная', icon: 'home', path: '/dashboard' },
+  { key: 'squad', label: 'Состав', icon: 'groups', path: '/squad-builder' },
+  { key: 'match', label: 'Матч', icon: 'sports_soccer', path: '/match-setup' },
+  { key: 'report', label: 'Отчет', icon: 'summarize', path: '/match-report' },
+  { key: 'more', label: 'Еще', icon: 'menu' },
 ];
 
-// Only show items that are actually functional in core MVP
 const MORE_MENU_ITEMS = [
-  { icon: 'person', label: 'Profile', path: '/profile' },
-  { icon: 'history', label: 'Match History', path: '/match-history' },
-  { icon: 'save', label: 'Saved Squads', path: '/saved-squads' },
-  { icon: 'settings', label: 'Settings', path: '/settings' },
+  { icon: 'person', label: 'Профиль', path: '/profile' },
+  { icon: 'history', label: 'История матчей', path: '/match-history' },
+  { icon: 'save', label: 'Сохраненные составы', path: '/saved-squads' },
+  { icon: 'settings', label: 'Настройки', path: '/settings' },
 ];
 
 export default function MobileBottomNav({ active }: { active?: BottomTab }) {
@@ -48,11 +47,11 @@ export default function MobileBottomNav({ active }: { active?: BottomTab }) {
     <>
       <div aria-hidden className="h-[88px] md:hidden" />
 
-      {/* More Menu Bottom Sheet */}
+      {/* Нижнее меню "Еще" */}
       {showMoreMenu && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center sm:hidden animate-fade-in">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowMoreMenu(false)}
           />
           <div className="relative w-full bg-[var(--color-surface)] border-t border-white/10 rounded-t-3xl pt-2 pb-safe animate-slide-up">
@@ -74,7 +73,7 @@ export default function MobileBottomNav({ active }: { active?: BottomTab }) {
         </div>
       )}
 
-      {/* Bottom Nav */}
+      {/* Нижняя навигация */}
       <div className="fixed inset-x-0 bottom-0 z-50 md:hidden pointer-events-none">
         <nav
           className="mx-auto border-t border-white/10 bg-[var(--color-surface-dim)]/95 backdrop-blur-2xl pointer-events-auto shadow-[0_-8px_30px_rgba(0,0,0,0.5)]"

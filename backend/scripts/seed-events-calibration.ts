@@ -45,11 +45,20 @@ type EventCounters = {
 };
 
 const DEFAULT_ZIP_CANDIDATES = [
+  path.resolve(process.cwd(), 'data', 'datasets', 'events', 'footbal events.zip'),
+  path.resolve(process.cwd(), 'data', 'datasets', 'events', 'footabal events.zip'),
+  path.resolve(process.cwd(), 'data', 'datasets', 'events', 'football events.zip'),
   path.resolve(process.cwd(), '..', 'frontend', 'public', 'footbal events.zip'),
   path.resolve(process.cwd(), '..', 'frontend', 'public', 'footabal events.zip'),
   path.resolve(process.cwd(), '..', 'frontend', 'public', 'football events.zip'),
 ];
-const DEFAULT_MAPPING_PATH = path.resolve(process.cwd(), 'data', 'mappings', 'football_events.mapping.json');
+const DEFAULT_MAPPING_PATH = path.resolve(
+  process.cwd(),
+  'data',
+  'datasets',
+  'mappings',
+  'football_events.mapping.json'
+);
 const DEFAULT_DATASET_NAME = 'football-events-kaggle';
 const DEFAULT_PROFILE_KEY = 'default-match-calibration-v1';
 

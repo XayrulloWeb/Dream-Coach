@@ -28,7 +28,7 @@ function clonePlayer(player: SimulationPlayer, idSuffix: string): SimulationPlay
   return {
     ...player,
     id: `${player.id}-${idSuffix}`,
-    name: `Rival ${player.rolePosition}`,
+    name: `Соперник ${player.rolePosition}`,
     isSubstitute: player.isSubstitute,
   };
 }
@@ -57,9 +57,10 @@ export default function MatchSetup() {
   const navigate = useNavigate();
   const payload = useMemo(() => loadSquadPayload(), []);
   const tournamentFixture = useMemo(() => loadTournamentFixtureHint(), []);
+  const [setupError, setSetupError] = useState('');
 
   const [opponentName, setOpponentName] = useState(
-    tournamentFixture?.opponentName ?? payload?.opponent?.name ?? 'Riverdale FC',
+    tournamentFixture?.opponentName ?? payload?.opponent?.name ?? '',
   );
   const [venue, setVenue] = useState<'HOME' | 'AWAY' | 'NEUTRAL'>(payload?.venue ?? 'HOME');
   const [opponentStyle, setOpponentStyle] = useState<TacticalStyle>(payload?.opponent?.tacticalStyle ?? 'BALANCED');
@@ -67,16 +68,16 @@ export default function MatchSetup() {
 
   if (!payload) {
     return (
-      <AppShell title="MATCH SETUP" activeTab="match" showBackButton>
+      <AppShell title="НАСТРОЙКА МАТЧА" activeTab="match" showBackButton>
         <div className="flex flex-col items-center justify-center h-[60vh] px-5 text-center">
           <span className="material-symbols-outlined text-6xl text-[var(--color-outline-variant)] mb-4">sports_soccer</span>
-          <h1 className="font-['Lexend'] text-2xl font-bold mb-2">No Squad Found</h1>
-          <p className="text-[var(--color-on-surface-variant)] mb-6 text-sm">You need to build your squad before starting a match.</p>
+          <h1 className="font-['Lexend'] text-2xl font-bold mb-2">Состав Не Найден</h1>
+          <p className="text-[var(--color-on-surface-variant)] mb-6 text-sm">Перед матчем нужно собрать состав.</p>
           <button
             onClick={() => navigate('/squad-builder')}
             className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-6 py-3 text-[var(--color-primary)] font-bold transition-colors hover:bg-[var(--color-primary)]/20"
           >
-            Build Squad
+            Собрать Состав
           </button>
         </div>
       </AppShell>
@@ -84,8 +85,15 @@ export default function MatchSetup() {
   }
 
   const onContinue = () => {
+    setSetupError('');
+    const cleanOpponentName = opponentName.trim();
+    if (!cleanOpponentName) {
+      setSetupError('Укажи название соперника перед стартом матча.');
+      return;
+    }
+
     const opponent = createOpponentFromTeam(payload.team, opponentStyle);
-    opponent.name = opponentName.trim() || 'Riverdale FC';
+    opponent.name = cleanOpponentName;
     opponent.formation = opponentFormation;
 
     const next = {
@@ -99,11 +107,17 @@ export default function MatchSetup() {
   };
 
   const currentOvr = payload.team.players 
-    ? Math.round(payload.team.players.reduce((sum, p) => sum + p.rating, 0) / payload.team.players.length) 
+    ? Math.round(
+        payload.team.players.reduce(
+          (sum, p) =>
+            sum + (p.rating ?? Math.round((p.pac + p.sho + p.pas + p.dri + p.def + p.phy) / 6)),
+          0,
+        ) / payload.team.players.length,
+      )
     : 0;
 
   return (
-    <AppShell title="MATCH SETUP" activeTab="match" showBackButton>
+    <AppShell title="НАСТРОЙКА МАТЧА" activeTab="match" showBackButton>
       <div className="px-5 space-y-6 animate-slide-up pb-8 pt-2">
         
         {/* VS Card */}
@@ -128,7 +142,7 @@ export default function MatchSetup() {
                 <span className="font-['Lexend'] font-black italic text-sm text-[var(--color-on-surface-variant)]">VS</span>
               </div>
               {tournamentFixture && (
-                <span className="mt-2 text-[9px] uppercase tracking-widest text-[var(--color-warning)] font-bold bg-[var(--color-warning)]/10 px-2 py-0.5 rounded border border-[var(--color-warning)]/30">Round {tournamentFixture.round}</span>
+                <span className="mt-2 text-[9px] uppercase tracking-widest text-[var(--color-warning)] font-bold bg-[var(--color-warning)]/10 px-2 py-0.5 rounded border border-[var(--color-warning)]/30">Тур {tournamentFixture.round}</span>
               )}
             </div>
 
@@ -148,19 +162,19 @@ export default function MatchSetup() {
         <section className="glass-panel rounded-2xl p-5 space-y-5">
           <div className="flex items-center gap-2 mb-2">
             <span className="material-symbols-outlined text-[var(--color-primary)]">tune</span>
-            <h3 className="font-['Lexend'] text-sm uppercase tracking-wider text-white">Match Parameters</h3>
+            <h3 className="font-['Lexend'] text-sm uppercase tracking-wider text-white">Параметры матча</h3>
           </div>
 
-          <Field label="Opponent Name" icon="edit">
+            <Field label="Название соперника" icon="edit">
             <input
               value={opponentName}
               onChange={(event) => setOpponentName(event.target.value)}
               className="w-full bg-[var(--color-surface-container-high)] rounded-xl border border-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--color-primary)]/50 transition-colors"
-              placeholder="Enter opponent name"
-            />
-          </Field>
+                placeholder="Введи название соперника"
+              />
+            </Field>
 
-          <Field label="Match Venue" icon="stadium">
+          <Field label="Стадион" icon="stadium">
             <div className="grid grid-cols-3 gap-2">
               {(['HOME', 'NEUTRAL', 'AWAY'] as const).map((v) => (
                 <button
@@ -172,14 +186,14 @@ export default function MatchSetup() {
                       : 'bg-[var(--color-surface-container-high)] border-white/5 text-[var(--color-on-surface-variant)]'
                   }`}
                 >
-                  {v}
+                  {v === 'HOME' ? 'ДОМА' : v === 'AWAY' ? 'В ГОСТЯХ' : 'НЕЙТРАЛЬНО'}
                 </button>
               ))}
             </div>
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Rival Formation" icon="schema">
+            <Field label="Схема соперника" icon="schema">
               <select
                 value={opponentFormation}
                 onChange={(event) => setOpponentFormation(event.target.value)}
@@ -193,17 +207,17 @@ export default function MatchSetup() {
               </select>
             </Field>
 
-            <Field label="Rival Style" icon="strategy">
+            <Field label="Стиль соперника" icon="strategy">
               <select
                 value={opponentStyle}
                 onChange={(event) => setOpponentStyle(event.target.value as TacticalStyle)}
                 className="w-full bg-[var(--color-surface-container-high)] rounded-xl border border-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--color-primary)]/50 transition-colors appearance-none"
               >
-                <option value="BALANCED">Balanced</option>
-                <option value="HIGH_PRESS">High Press</option>
-                <option value="COUNTER">Counter</option>
-                <option value="POSSESSION">Possession</option>
-                <option value="LOW_BLOCK">Low Block</option>
+                <option value="BALANCED">Сбалансированный</option>
+                <option value="HIGH_PRESS">Высокий прессинг</option>
+                <option value="COUNTER">Контратаки</option>
+                <option value="POSSESSION">Контроль мяча</option>
+                <option value="LOW_BLOCK">Низкий блок</option>
               </select>
             </Field>
           </div>
@@ -215,8 +229,9 @@ export default function MatchSetup() {
           className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-fixed)] text-[var(--color-on-primary)] font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all neon-glow shadow-lg active:scale-[0.98] mt-4"
         >
           <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
-          KICK OFF
+          НАЧАТЬ МАТЧ
         </button>
+        {setupError ? <p className="text-sm text-[var(--color-danger)]">{setupError}</p> : null}
       </div>
     </AppShell>
   );

@@ -1,0 +1,22 @@
+{
+  "name": "kaggle_football_events_default",
+  "events": {
+    "matchId": ["id_odsp", "match_id", "game_id"],
+    "eventType": ["event_type", "type"],
+    "eventType2": ["event_type2", "sub_type"],
+    "isGoal": ["is_goal", "goal"],
+    "shotOutcome": ["shot_outcome", "shot_result"],
+    "location": ["location", "zone"],
+    "side": ["side"],
+    "fastBreak": ["fast_break", "counter_attack"],
+    "time": ["time", "minute"],
+    "text": ["text", "description"]
+  },
+  "matches": {
+    "matchId": ["id_odsp", "match_id", "game_id"],
+    "homeGoals": ["fthg", "home_goals", "goals_home"],
+    "awayGoals": ["ftag", "away_goals", "goals_away"],
+    "league": ["league"],
+    "season": ["season"]
+  }
+}

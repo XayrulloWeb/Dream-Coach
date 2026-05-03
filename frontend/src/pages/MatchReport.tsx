@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import type { MatchFinalReport } from '../types/simulation';
@@ -33,16 +33,16 @@ export default function MatchReport() {
 
   if (!report) {
     return (
-      <AppShell title="Match Report" activeTab="report">
+      <AppShell title="Отчет о матче" activeTab="report">
         <div className="flex flex-col items-center justify-center h-[60vh] px-5 text-center">
           <span className="material-symbols-outlined text-6xl text-[var(--color-outline-variant)] mb-4">analytics</span>
-          <h1 className="font-['Lexend'] text-2xl font-bold mb-2">No Report Found</h1>
-          <p className="text-[var(--color-on-surface-variant)] mb-6 text-sm">Play a match to generate a detailed tactical analysis.</p>
+          <h1 className="font-['Lexend'] text-2xl font-bold mb-2">Отчет не найден</h1>
+          <p className="text-[var(--color-on-surface-variant)] mb-6 text-sm">Сыграй матч, чтобы сформировать подробный тактический разбор.</p>
           <button
             onClick={() => navigate('/match-setup')}
             className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-6 py-3 text-[var(--color-primary)] font-bold transition-colors hover:bg-[var(--color-primary)]/20"
           >
-            Start Match
+            Начать матч
           </button>
         </div>
       </AppShell>
@@ -59,16 +59,16 @@ export default function MatchReport() {
       link.download = `dream-coach-${report.score.home}-${report.score.away}.png`;
       link.href = dataUrl;
       link.click();
-      setShareMessage('Card saved!');
+      setShareMessage('Карточка сохранена!');
       setTimeout(() => setShareMessage(''), 3000);
     } catch (err) {
       console.error('Failed to save card', err);
-      setShareMessage('Failed to save card.');
+      setShareMessage('Не удалось сохранить карточку.');
     }
   };
 
   return (
-    <AppShell title="MATCH REPORT" activeTab="report" showBackButton>
+    <AppShell title="ОТЧЕТ О МАТЧЕ" activeTab="report" showBackButton>
       <div className="px-5 space-y-5 animate-slide-up pb-8">
         
         <FinalScoreHero report={report} />
@@ -86,7 +86,7 @@ export default function MatchReport() {
             className="flex flex-col items-center justify-center gap-1 glass-panel hover:bg-[var(--color-surface-container-high)] p-3 rounded-xl border border-[var(--color-primary)]/30 text-[var(--color-primary)] transition-colors active:scale-95"
           >
             <span className="material-symbols-outlined text-xl">replay</span>
-            <span className="text-[10px] uppercase tracking-wider font-bold">Rematch</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold">Реванш</span>
           </button>
           
           <button
@@ -94,7 +94,7 @@ export default function MatchReport() {
             className="flex flex-col items-center justify-center gap-1 glass-panel hover:bg-[var(--color-surface-container-high)] p-3 rounded-xl border border-white/20 text-white transition-colors active:scale-95"
           >
             <span className="material-symbols-outlined text-xl">home</span>
-            <span className="text-[10px] uppercase tracking-wider font-bold">Home</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold">Главная</span>
           </button>
         </section>
         
@@ -103,3 +103,4 @@ export default function MatchReport() {
     </AppShell>
   );
 }
+

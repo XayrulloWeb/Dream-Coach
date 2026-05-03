@@ -58,9 +58,14 @@ model Player {
   name               String
   fullName           String?
   faceUrl            String?
+  nationality        String?
   age                Int?
+  heightCm           Int?
   realPosition       String
   preferredPositions String[]      @default([])
+  playerType         String        @default("CURRENT")
+  cardType           String?
+  rarity             String?
   rating             Int
   potential          Int?
   pac                Int

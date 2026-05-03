@@ -1,0 +1,5 @@
+name,position,rating,pac,sho,pas,dri,def,phy,stamina,attack_work_rate,defense_work_rate
+Lionel Messi,RW,90,82,89,91,92,35,65,78,HIGH,LOW
+Neymar Jr,LW,89,87,84,86,92,37,61,79,HIGH,LOW
+N'Golo Kante,CDM,86,72,66,78,81,86,80,92,MEDIUM,HIGH
+Jordi Alba,LB,84,86,68,82,84,78,72,83,HIGH,MEDIUM

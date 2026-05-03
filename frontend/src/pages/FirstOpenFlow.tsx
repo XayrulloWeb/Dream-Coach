@@ -137,8 +137,8 @@ export default function FirstOpenFlow() {
                 DREAM COACH
               </h1>
               <p className="text-[var(--color-on-surface-variant)] mt-2 text-base max-w-[280px] text-center leading-relaxed">
-                Build squads. Set tactics. Win matches.<br />
-                <span className="text-[var(--color-primary)] font-semibold">Your decisions shape the game.</span>
+                Собирай состав. Настраивай тактику. Побеждай.<br />
+                <span className="text-[var(--color-primary)] font-semibold">Твои решения меняют игру.</span>
               </p>
             </div>
 
@@ -155,13 +155,13 @@ export default function FirstOpenFlow() {
                   boxShadow: '0 0 24px rgba(34,197,94,0.35), 0 4px 12px rgba(0,0,0,0.3)',
                 }}
               >
-                Get Started
+                Начать
               </button>
               <button
                 onClick={skipFlow}
                 className="w-full py-3 text-[var(--color-on-surface-variant)] text-xs uppercase tracking-[0.2em] hover:text-white transition-colors"
               >
-                Skip for now
+                Пропустить пока
               </button>
             </div>
           </div>
@@ -180,15 +180,15 @@ export default function FirstOpenFlow() {
             </button>
             {progressBar}
             <button onClick={skipFlow} className="text-[11px] text-[var(--color-on-surface-variant)] uppercase tracking-wider hover:text-white transition-colors">
-              Skip
+              Пропустить
             </button>
           </header>
 
           {/* Title */}
           <section className="relative z-10 text-center mt-6 mb-8">
-            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">How It Works</p>
+            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">Как это работает</p>
             <h2 className="font-['Lexend'] text-3xl font-bold leading-tight text-white">
-              Three Steps to<br /><span className="text-[var(--color-primary)]">Victory</span>
+              Три шага к<br /><span className="text-[var(--color-primary)]">победе</span>
             </h2>
           </section>
 
@@ -197,8 +197,8 @@ export default function FirstOpenFlow() {
             <FeatureCard
               step="01"
               icon="groups"
-              title="Build Your Squad"
-              description="Pick from 800+ real players. Choose your formation. Set your tactical identity."
+              title="Собери состав"
+              description="Выбирай из 800+ реальных игроков. Определи схему и стиль игры."
               gradient="from-[#22C55E]/20 to-transparent"
               borderColor="border-[#22C55E]/20"
               delay={0}
@@ -206,8 +206,8 @@ export default function FirstOpenFlow() {
             <FeatureCard
               step="02"
               icon="psychology"
-              title="Tactical Decisions"
-              description="Get real-time warnings during matches. Make substitutions when it matters most."
+              title="Тактические решения"
+              description="Получай предупреждения по ходу матча и делай замены в нужный момент."
               gradient="from-[#3B82F6]/20 to-transparent"
               borderColor="border-[#3B82F6]/20"
               delay={100}
@@ -215,8 +215,8 @@ export default function FirstOpenFlow() {
             <FeatureCard
               step="03"
               icon="analytics"
-              title="Learn & Improve"
-              description="AI-powered match reports explain exactly why you won or lost. Every decision counts."
+              title="Учись и улучшайся"
+              description="Отчеты на базе ИИ объясняют, почему ты выиграл или проиграл. Каждое решение важно."
               gradient="from-[#F59E0B]/20 to-transparent"
               borderColor="border-[#F59E0B]/20"
               delay={200}
@@ -233,7 +233,7 @@ export default function FirstOpenFlow() {
                 boxShadow: '0 0 24px rgba(34,197,94,0.3)',
               }}
             >
-              Continue
+              Продолжить
               <span className="material-symbols-outlined text-xl">arrow_forward</span>
             </button>
           </div>
@@ -252,17 +252,17 @@ export default function FirstOpenFlow() {
             </button>
             {progressBar}
             <button onClick={skipFlow} className="text-[11px] text-[var(--color-on-surface-variant)] uppercase tracking-wider hover:text-white transition-colors">
-              Skip
+              Пропустить
             </button>
           </header>
 
           {/* Title */}
           <section className="relative z-10 text-center mt-4 mb-6">
-            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">Personalize</p>
+            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">Персонализация</p>
             <h2 className="font-['Lexend'] text-3xl font-bold leading-tight text-white">
-              Pick Your<br /><span className="text-[var(--color-primary)]">Favorite Club</span>
+              Выбери<br /><span className="text-[var(--color-primary)]">любимый клуб</span>
             </h2>
-            <p className="text-[var(--color-on-surface-variant)] text-sm mt-2">This helps us personalize your experience</p>
+            <p className="text-[var(--color-on-surface-variant)] text-sm mt-2">Это поможет лучше настроить твой опыт</p>
           </section>
 
           {/* Search */}
@@ -272,7 +272,7 @@ export default function FirstOpenFlow() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search clubs..."
+                placeholder="Поиск клубов..."
                 className="w-full bg-[var(--color-surface-container-high)] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm outline-none focus:border-[var(--color-primary)] transition-colors placeholder:text-[var(--color-on-surface-variant)]/50"
               />
             </div>
@@ -319,7 +319,7 @@ export default function FirstOpenFlow() {
                 boxShadow: '0 0 24px rgba(34,197,94,0.3)',
               }}
             >
-              Continue
+              Продолжить
               <span className="material-symbols-outlined text-xl">arrow_forward</span>
             </button>
           </div>
@@ -355,13 +355,13 @@ export default function FirstOpenFlow() {
 
           {/* Text */}
           <h2 className="font-['Lexend'] text-4xl font-black text-white text-center mb-3 animate-[fadeInUp_0.5s_ease-out_0.15s_both]">
-            YOU'RE READY<span className="text-[var(--color-primary)]">!</span>
+            ВСЕ ГОТОВО<span className="text-[var(--color-primary)]">!</span>
           </h2>
           <p className="text-[var(--color-on-surface-variant)] text-center max-w-[300px] leading-relaxed mb-2 animate-[fadeInUp_0.5s_ease-out_0.25s_both]">
-            Your journey as a Dream Coach starts now.
+            Твой путь в Dream Coach начинается сейчас.
           </p>
           <p className="text-[var(--color-primary)] text-sm font-semibold text-center mb-10 animate-[fadeInUp_0.5s_ease-out_0.3s_both]">
-            Build. Manage. Win. 🏆
+            Собирай. Управляй. Побеждай.
           </p>
 
           {/* CTA */}
@@ -374,7 +374,7 @@ export default function FirstOpenFlow() {
                 boxShadow: '0 0 30px rgba(34,197,94,0.4), 0 8px 24px rgba(0,0,0,0.3)',
               }}
             >
-              Let's Go
+              Поехали
               <span className="material-symbols-outlined text-xl">rocket_launch</span>
             </button>
           </div>

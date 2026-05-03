@@ -1,0 +1,32 @@
+export type PlayerType = 'CURRENT' | 'LEGEND' | 'HERO' | 'CUSTOM';
+export type WorkRate = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type PlayerCardDto = {
+  id: string;
+  displayName: string;
+  fullName?: string;
+  playerType: PlayerType;
+  cardType?: string;
+  rarity?: string;
+  nationality?: string;
+  age?: number;
+  heightCm?: number;
+  primaryPosition: string;
+  positions: string[];
+  rating: number;
+  pac: number;
+  sho: number;
+  pas: number;
+  dri: number;
+  def: number;
+  phy: number;
+  stamina?: number;
+  weakFoot?: number;
+  skillMoves?: number;
+  attackWorkRate?: WorkRate;
+  defenseWorkRate?: WorkRate;
+  role?: string;
+  photoUrl?: string;
+  hasPhoto: boolean;
+  tags: string[];
+};

@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 
 export default function ComingSoon() {
   const navigate = useNavigate();
 
   return (
-    <AppShell title="COMING SOON" activeTab="more" showBackButton>
+    <AppShell title="СКОРО" activeTab="more" showBackButton>
       <div className="flex flex-col items-center justify-center h-[60vh] px-6 text-center">
         <div
           className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 border border-[var(--color-primary)]/20"
@@ -20,10 +20,10 @@ export default function ComingSoon() {
         </div>
 
         <h1 className="font-['Lexend'] text-2xl font-bold text-white mb-2">
-          Coming Soon
+          Скоро
         </h1>
         <p className="text-[var(--color-on-surface-variant)] text-sm leading-relaxed mb-8" style={{ maxWidth: '300px' }}>
-          This feature is being built. Focus on the core match experience for now!
+          Эта функция в разработке. Пока сосредоточься на ключевом игровом опыте.
         </p>
 
         <button
@@ -34,9 +34,10 @@ export default function ComingSoon() {
             boxShadow: '0 0 20px rgba(34,197,94,0.3)',
           }}
         >
-          Go Home
+          На главную
         </button>
       </div>
     </AppShell>
   );
 }
+

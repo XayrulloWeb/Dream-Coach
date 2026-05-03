@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { api, toApiError } from '../lib/api';
@@ -48,7 +48,7 @@ export default function MatchHistory() {
   }, []);
 
   return (
-    <AppShell title="Match History" activeTab="home" hideHeader>
+    <AppShell title="История матчей" activeTab="home" hideHeader>
       <header className="w-full z-40 bg-[var(--color-surface)] border-b border-white/5 pt-safe sticky top-0">
         <div className="flex items-center px-5 py-4">
           <button 
@@ -58,8 +58,8 @@ export default function MatchHistory() {
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
           <div>
-            <h1 className="font-['Lexend'] text-lg text-white">Match History</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Past results</p>
+            <h1 className="font-['Lexend'] text-lg text-white">История матчей</h1>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Прошлые результаты</p>
           </div>
         </div>
       </header>
@@ -76,14 +76,14 @@ export default function MatchHistory() {
         ) : matches.length === 0 ? (
           <div className="text-center p-10 glass-panel rounded-2xl">
             <span className="material-symbols-outlined text-4xl text-[var(--color-outline-variant)] mb-2">history</span>
-            <p className="text-sm text-[var(--color-on-surface-variant)]">No matches played yet.</p>
+            <p className="text-sm text-[var(--color-on-surface-variant)]">Пока не сыграно ни одного матча.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {matches.map((match) => {
               const isWin = match.userScore > match.opponentScore;
               const isLoss = match.userScore < match.opponentScore;
-              const resultText = isWin ? 'WIN' : isLoss ? 'LOSS' : 'DRAW';
+              const resultText = isWin ? 'ПОБЕДА' : isLoss ? 'ПОРАЖЕНИЕ' : 'НИЧЬЯ';
               const resultColor = isWin ? 'text-[var(--color-primary)]' : isLoss ? 'text-[var(--color-danger)]' : 'text-[var(--color-warning)]';
               const resultBg = isWin ? 'bg-[var(--color-primary)]' : isLoss ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-warning)]';
 
@@ -115,3 +115,4 @@ export default function MatchHistory() {
     </AppShell>
   );
 }
+

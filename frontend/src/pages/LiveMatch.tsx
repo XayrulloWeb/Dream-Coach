@@ -6,15 +6,12 @@ import { api, toApiError } from '../lib/api';
 import {
   loadSquadPayload,
   saveSquadPayload,
-  DEFAULT_STARTERS,
-  buildSimulationPayloadFromStarters,
 } from '../lib/squad';
 import { saveMatchToHistory } from '../lib/matchHistory';
 import type {
   MatchStateResponse,
   MatchEvent,
   MatchFinalReport,
-  MatchIssue,
   ResumeMatchResponse,
   SimulationPayload,
   StartMatchResponse,
@@ -26,19 +23,13 @@ import type {
 const ACTIVE_MATCH_KEY = 'dc_active_match_id';
 const LAST_MATCH_REPORT_KEY = 'dc_last_match_report';
 
-function getInitialPayload(): SimulationPayload {
-  return (
-    loadSquadPayload() ??
-    buildSimulationPayloadFromStarters(
-      DEFAULT_STARTERS.map((player) => ({ id: player.id, name: player.name, rating: player.rating })),
-      'HIGH_PRESS',
-    )
-  );
+function getInitialPayload(): SimulationPayload | null {
+  return loadSquadPayload();
 }
 
 export default function LiveMatch() {
   const navigate = useNavigate();
-  const [payload, setPayload] = useState<SimulationPayload>(() => getInitialPayload());
+  const [payload, setPayload] = useState<SimulationPayload | null>(() => getInitialPayload());
   const [matchId, setMatchId] = useState<string>('');
   const [pauseState, setPauseState] = useState<StartMatchResponse | null>(null);
   const [finalReport, setFinalReport] = useState<MatchFinalReport | null>(null);
@@ -49,6 +40,7 @@ export default function LiveMatch() {
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [lastAdjustment, setLastAdjustment] = useState('');
   const [impactSummary, setImpactSummary] = useState('');
+  const [pausePanelCollapsed, setPausePanelCollapsed] = useState(false);
 
   // Animated Timeline State
   const [currentMinute, setCurrentMinute] = useState(0);
@@ -59,6 +51,11 @@ export default function LiveMatch() {
 
   const startMatch = async (nextPayload?: SimulationPayload) => {
     const requestPayload = nextPayload ?? payload;
+    if (!requestPayload) {
+      setError('Сначала собери состав и настрой матч.');
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -95,7 +92,7 @@ export default function LiveMatch() {
     try {
       const response = await api.post<ResumeMatchResponse>(`/api/matches/${matchId}/resume`);
       setFinalReport(response.data.report);
-      saveMatchToHistory(payload.team.name, payload.opponent?.name ?? 'Riverdale FC', response.data.report);
+      saveMatchToHistory(payload?.team.name ?? 'Dream Coach XI', payload?.opponent?.name ?? 'Rival FC', response.data.report);
       localStorage.setItem(LAST_MATCH_REPORT_KEY, JSON.stringify(response.data.report));
       localStorage.removeItem(ACTIVE_MATCH_KEY);
       setIsSimulating(true);
@@ -113,6 +110,12 @@ export default function LiveMatch() {
     const bootstrap = async () => {
       const initialPayload = getInitialPayload();
       if (!active) return;
+
+      if (!initialPayload) {
+        setLoading(false);
+        setError('Сначала собери состав, затем настрой матч.');
+        return;
+      }
 
       setPayload(initialPayload);
       const savedMatchId = localStorage.getItem(ACTIVE_MATCH_KEY);
@@ -188,13 +191,16 @@ export default function LiveMatch() {
   const recentEvents = useMemo(() => [...animatedEvents].reverse().slice(0, 12), [animatedEvents]);
 
   // Calculate animated score
-  const homeScore = useMemo(() => animatedEvents.filter(e => e.type === 'GOAL' && e.team === payload.team.name).length, [animatedEvents, payload.team.name]);
-  const awayScore = useMemo(() => animatedEvents.filter(e => e.type === 'GOAL' && e.team !== payload.team.name).length, [animatedEvents, payload.team.name]);
+  const homeTeamName = payload?.team.name ?? 'Dream Coach XI';
+  const awayTeamName = payload?.opponent?.name ?? 'Rival FC';
+
+  const homeScore = useMemo(() => animatedEvents.filter(e => e.type === 'GOAL' && e.team === homeTeamName).length, [animatedEvents, homeTeamName]);
+  const awayScore = useMemo(() => animatedEvents.filter(e => e.type === 'GOAL' && e.team !== homeTeamName).length, [animatedEvents, homeTeamName]);
 
   const issues = pauseState?.insights?.[0]?.issues ?? [];
   const criticalIssue = issues[0];
-  const starters = useMemo(() => payload.team.players.filter((player) => !player.isSubstitute), [payload]);
-  const bench = useMemo(() => payload.team.players.filter((player) => player.isSubstitute), [payload]);
+  const starters = useMemo(() => payload?.team.players.filter((player) => !player.isSubstitute) ?? [], [payload]);
+  const bench = useMemo(() => payload?.team.players.filter((player) => player.isSubstitute) ?? [], [payload]);
 
   const momentumHome = useMemo(() => {
     const pos = displayed?.stats.home.possession ?? 50;
@@ -206,7 +212,7 @@ export default function LiveMatch() {
     tacticalStyle: TacticalStyle | undefined,
     description: string,
   ) => {
-    if (!matchId) return;
+    if (!matchId || !payload) return;
 
     setLoading(true);
     setError('');
@@ -242,8 +248,28 @@ export default function LiveMatch() {
     }
   };
 
+  if (!payload) {
+    return (
+      <AppShell title="МАТЧ" activeTab="match">
+        <div className="flex flex-col items-center justify-center h-[60vh] px-5 text-center">
+          <span className="material-symbols-outlined text-6xl text-[var(--color-outline-variant)] mb-4">sports_soccer</span>
+          <h1 className="font-['Lexend'] text-2xl font-bold mb-2">Состав Не Настроен</h1>
+          <p className="text-[var(--color-on-surface-variant)] mb-6 text-sm">
+            Собери состав и заверши настройку матча перед запуском симуляции.
+          </p>
+          <button
+            onClick={() => navigate('/player-selection')}
+            className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 px-6 py-3 text-[var(--color-primary)] font-bold transition-colors hover:bg-[var(--color-primary)]/20"
+          >
+            Собрать Состав
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell title="LIVE MATCH" activeTab="match" hideHeader>
+    <AppShell title="МАТЧ" activeTab="match" hideHeader>
       {/* Custom Header */}
       <header className="w-full z-40 bg-transparent pt-safe mb-2">
         <div className="flex items-center justify-between px-5 py-4">
@@ -270,7 +296,7 @@ export default function LiveMatch() {
               currentMinute === 60 && !finalReport ? 'border-[var(--color-warning)]/50 bg-[var(--color-warning)]/10 text-[var(--color-warning)]' :
               'border-[var(--color-primary)]/50 bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
             }`}>
-              {isSimulating ? 'LIVE' : currentMinute === 60 && !finalReport ? 'PAUSED' : 'FULL TIME'}
+              {isSimulating ? 'ИДЕТ' : currentMinute === 60 && !finalReport ? 'ПАУЗА' : 'ЗАВЕРШЕН'}
             </div>
           </div>
 
@@ -281,19 +307,19 @@ export default function LiveMatch() {
             </div>
 
             <div className="w-full grid grid-cols-3 items-center mt-2">
-              <TeamSide name={payload.team.name} formation={payload.team.formation} color="text-[var(--color-primary)]" />
+              <TeamSide name={homeTeamName} formation={payload.team.formation} color="text-[var(--color-primary)]" />
               <div className="text-center flex justify-center items-center gap-4">
                 <span className="text-5xl sm:text-6xl font-black tabular-nums">{homeScore}</span>
                 <span className="text-2xl text-[var(--color-on-surface-variant)]">-</span>
                 <span className="text-5xl sm:text-6xl font-black tabular-nums">{awayScore}</span>
               </div>
-              <TeamSide name={payload.opponent?.name ?? 'Riverdale FC'} formation={payload.opponent?.formation ?? '4-2-3-1'} alignRight color="text-[var(--color-blue-accent)]" />
+              <TeamSide name={awayTeamName} formation={payload.opponent?.formation ?? '4-2-3-1'} alignRight color="text-[var(--color-blue-accent)]" />
             </div>
           </div>
 
           <div className="mt-4 px-2">
             <div className="flex justify-between text-[10px] text-[var(--color-on-surface-variant)] uppercase tracking-wider mb-1.5 font-bold">
-              <span>Momentum</span>
+              <span>Импульс</span>
               <span>{Math.round(momentumHome)}% - {100 - Math.round(momentumHome)}%</span>
             </div>
             <div className="w-full h-1.5 flex rounded-full overflow-hidden opacity-90 border border-white/5">
@@ -303,93 +329,108 @@ export default function LiveMatch() {
           </div>
 
           <div className="mt-6 pt-4 border-t border-white/10 grid grid-cols-4 gap-2">
-            <StatMini label="Poss" home={`${displayed?.stats.home.possession ?? 50}%`} away={`${displayed?.stats.away.possession ?? 50}%`} animate={isSimulating} />
-            <StatMini label="Shots" home={`${displayed?.stats.home.shots ?? 0}`} away={`${displayed?.stats.away.shots ?? 0}`} animate={isSimulating} />
+            <StatMini label="Влад" home={`${displayed?.stats.home.possession ?? 50}%`} away={`${displayed?.stats.away.possession ?? 50}%`} animate={isSimulating} />
+            <StatMini label="Удары" home={`${displayed?.stats.home.shots ?? 0}`} away={`${displayed?.stats.away.shots ?? 0}`} animate={isSimulating} />
             <StatMini label="xG" home={`${displayed?.stats.home.xg ?? 0}`} away={`${displayed?.stats.away.xg ?? 0}`} animate={isSimulating} />
-            <StatMini label="Target" home={`${displayed?.stats.home.shotsOnTarget ?? 0}`} away={`${displayed?.stats.away.shotsOnTarget ?? 0}`} animate={isSimulating} />
+            <StatMini label="В Створ" home={`${displayed?.stats.home.shotsOnTarget ?? 0}`} away={`${displayed?.stats.away.shotsOnTarget ?? 0}`} animate={isSimulating} />
           </div>
         </section>
 
-        {/* Coach Pause Overlay / Bottom Sheet */}
+                {/* Плавающая панель тренерской паузы */}
         {!isSimulating && currentMinute === 60 && !finalReport && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center animate-fade-in pointer-events-none p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-md pointer-events-auto" />
-            <div 
-              className="relative w-full bg-[var(--color-surface)] border sm:border sm:rounded-2xl border-[var(--color-warning)]/30 border-b-0 sm:border-b-[var(--color-warning)]/30 rounded-t-3xl p-5 shadow-[0_-10px_50px_rgba(245,158,11,0.15)] animate-slide-up pointer-events-auto pb-safe flex flex-col max-h-[85vh]"
-              style={{ maxWidth: '500px' }}
-            >
-              
-              <div className="flex items-center gap-3 mb-6 mt-2">
-                <div className="w-12 h-12 rounded-full bg-[var(--color-warning)]/20 flex items-center justify-center border border-[var(--color-warning)]/40 neon-glow">
-                  <span className="material-symbols-outlined text-[var(--color-warning)] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>sports</span>
+          <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+76px)] z-[100] flex justify-center px-3 pointer-events-none animate-fade-in">
+            {pausePanelCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setPausePanelCollapsed(false)}
+                className="pointer-events-auto rounded-full border border-[var(--color-warning)]/40 bg-[var(--color-surface)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--color-warning)] shadow-lg"
+              >
+                Пауза матча
+              </button>
+            ) : (
+              <div className="pointer-events-auto w-full max-w-[520px] rounded-2xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.45)]">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--color-warning)]/20 flex items-center justify-center border border-[var(--color-warning)]/40">
+                      <span className="material-symbols-outlined text-[var(--color-warning)] text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>sports</span>
+                    </div>
+                    <div>
+                      <h2 className="font-['Lexend'] text-lg text-white">Пауза тренера</h2>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-warning)] font-bold">Нужно тактическое решение</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPausePanelCollapsed(true)}
+                    className="rounded-lg border border-white/10 px-2 py-1 text-[10px] uppercase text-[var(--color-on-surface-variant)] hover:text-white"
+                  >
+                    Скрыть
+                  </button>
                 </div>
-                <div>
-                  <h2 className="font-['Lexend'] text-2xl text-white">Coach Pause</h2>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-warning)] font-bold">Tactical Intervention Required</p>
-                </div>
-              </div>
 
-              <div className="overflow-y-auto flex-1 pr-1 space-y-4 mb-6">
-                {criticalIssue ? (
-                  <div className="bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-[var(--color-warning)]">warning</span>
-                      <div>
-                        <p className="font-semibold text-white text-sm">{criticalIssue.message}</p>
-                        {criticalIssue.evidence && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-[11px] text-[var(--color-on-surface-variant)] font-medium">
-                              Zone: {criticalIssue.zone?.toUpperCase()} • Attacks: {criticalIssue.evidence.opponentAttacksFromZone}
-                              {criticalIssue.evidence.successfulOpponentAttacks > 0 && ` (${criticalIssue.evidence.successfulOpponentAttacks} Goals)`}
-                            </p>
-                            {criticalIssue.evidence.playerStamina && Object.keys(criticalIssue.evidence.playerStamina).length > 0 && (
+                <div className="max-h-[38vh] overflow-y-auto pr-1 space-y-3">
+                  {criticalIssue ? (
+                    <div className="bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 rounded-xl p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-[var(--color-warning)]">warning</span>
+                        <div>
+                          <p className="font-semibold text-white text-sm">{criticalIssue.message}</p>
+                          {criticalIssue.evidence && (
+                            <div className="mt-2 space-y-1">
                               <p className="text-[11px] text-[var(--color-on-surface-variant)] font-medium">
-                                Stamina: {Object.entries(criticalIssue.evidence.playerStamina as Record<string, number>).map(([name, stam]) => `${name} ${Math.round(stam)}%`).join(', ')}
+                                Зона: {criticalIssue.zone?.toUpperCase()} | Атаки: {criticalIssue.evidence.opponentAttacksFromZone}
+                                {(criticalIssue.evidence?.successfulOpponentAttacks ?? 0) > 0 && ` (голы: ${criticalIssue.evidence?.successfulOpponentAttacks})`}
                               </p>
-                            )}
-                            {criticalIssue.evidence.workRateMismatch && (
-                              <p className="text-[11px] text-[var(--color-warning)] font-bold">
-                                Work-rate mismatch detected!
-                              </p>
-                            )}
-                          </div>
-                        )}
+                              {criticalIssue.evidence.playerStamina && Object.keys(criticalIssue.evidence.playerStamina).length > 0 && (
+                                <p className="text-[11px] text-[var(--color-on-surface-variant)] font-medium">
+                                  Выносливость: {Object.entries(criticalIssue.evidence.playerStamina as Record<string, number>).map(([name, stam]) => `${name} ${Math.round(stam)}%`).join(', ')}
+                                </p>
+                              )}
+                              {criticalIssue.evidence.workRateMismatch && (
+                                <p className="text-[11px] text-[var(--color-warning)] font-bold">
+                                  Обнаружен конфликт work-rate
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl p-4 flex items-start gap-3">
-                    <span className="material-symbols-outlined text-[var(--color-primary)]">check_circle</span>
-                    <div>
-                      <p className="font-semibold text-white text-sm">Team structure holding well</p>
-                      <p className="text-[11px] text-[var(--color-on-surface-variant)] mt-1">Check player stamina before continuing.</p>
+                  ) : (
+                    <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl p-3 flex items-start gap-3">
+                      <span className="material-symbols-outlined text-[var(--color-primary)]">check_circle</span>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Критических проблем не найдено</p>
+                        <p className="text-[11px] text-[var(--color-on-surface-variant)] mt-1">Можно продолжать матч без замен.</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {lastAdjustment && <p className="text-xs text-[var(--color-primary)] bg-[var(--color-primary)]/10 p-3 rounded-xl border border-[var(--color-primary)]/20">{lastAdjustment}</p>}
-                {impactSummary && <p className="text-xs text-[var(--color-blue-accent)] bg-[var(--color-blue-accent)]/10 p-3 rounded-xl border border-[var(--color-blue-accent)]/20">{impactSummary}</p>}
-              </div>
+                  {lastAdjustment ? <p className="text-xs text-[var(--color-primary)] bg-[var(--color-primary)]/10 p-3 rounded-xl border border-[var(--color-primary)]/20">{lastAdjustment}</p> : null}
+                  {impactSummary ? <p className="text-xs text-[var(--color-blue-accent)] bg-[var(--color-blue-accent)]/10 p-3 rounded-xl border border-[var(--color-blue-accent)]/20">{impactSummary}</p> : null}
+                </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 mt-auto">
-                <button
-                  onClick={() => setSubModalOpen(true)}
-                  disabled={loading}
-                  className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 py-4 text-[var(--color-primary)] font-bold uppercase tracking-wider hover:bg-[var(--color-primary)]/20 transition-colors"
-                >
-                  Make Subs
-                </button>
-                <button
-                  onClick={() => void resumeMatch()}
-                  disabled={loading}
-                  className="rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-fixed)] text-[var(--color-on-primary)] py-4 font-bold uppercase tracking-wider transition-colors neon-glow"
-                >
-                  Resume Match
-                </button>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <button
+                    onClick={() => setSubModalOpen(true)}
+                    disabled={loading}
+                    className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/10 py-3 text-[var(--color-primary)] font-bold uppercase tracking-wider hover:bg-[var(--color-primary)]/20 transition-colors"
+                  >
+                    Сделать замены
+                  </button>
+                  <button
+                    onClick={() => void resumeMatch()}
+                    disabled={loading}
+                    className="rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-fixed)] text-[var(--color-on-primary)] py-3 font-bold uppercase tracking-wider transition-colors neon-glow"
+                  >
+                    Продолжить матч
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
+
 
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Left Column: Tactical Field & Fatigue */}
@@ -397,10 +438,10 @@ export default function LiveMatch() {
           {/* Tactical Field */}
           <section className="glass-panel rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Live Pitch</p>
+              <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Поле</p>
               {criticalIssue && currentMinute === 60 && !finalReport && (
                 <span className="rounded bg-[var(--color-warning)]/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider text-[var(--color-warning)] animate-pulse">
-                  {criticalIssue.zone} Alert
+                  {criticalIssue.zone === 'left' ? 'Риск слева' : criticalIssue.zone === 'right' ? 'Риск справа' : 'Риск в центре'}
                 </span>
               )}
             </div>
@@ -433,9 +474,9 @@ export default function LiveMatch() {
           {/* Events Timeline */}
           <section className="glass-panel rounded-2xl p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Match Events</p>
+              <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">События Матча</p>
               {isSimulating && (
-                <button onClick={handleSkip} className="text-[10px] text-[var(--color-primary)] font-bold uppercase tracking-wider bg-[var(--color-primary)]/10 px-2 py-1 rounded">Skip</button>
+                <button onClick={handleSkip} className="text-[10px] text-[var(--color-primary)] font-bold uppercase tracking-wider bg-[var(--color-primary)]/10 px-2 py-1 rounded">Пропуск</button>
               )}
             </div>
             
@@ -461,7 +502,7 @@ export default function LiveMatch() {
                 ))
               ) : (
                 <div className="h-full flex items-center justify-center text-[var(--color-on-surface-variant)] text-sm">
-                  {isSimulating ? 'Awaiting kickoff...' : 'No events.'}
+                  {isSimulating ? 'Ожидание стартового свистка...' : 'Пока событий нет.'}
                 </div>
               )}
             </div>
@@ -499,7 +540,7 @@ function StatMini({ label, home, away, animate }: { label: string; home: string;
       <p className="text-[9px] uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-1 relative z-10">{label}</p>
       <div className="flex justify-between items-end px-1 relative z-10">
         <span className="text-xs sm:text-sm font-bold text-white">{home}</span>
-        <span className="text-[10px] text-[var(--color-on-surface-variant)] font-medium mb-0.5">vs</span>
+        <span className="text-[10px] text-[var(--color-on-surface-variant)] font-medium mb-0.5">на</span>
         <span className="text-xs sm:text-sm font-bold text-white">{away}</span>
       </div>
     </div>
@@ -521,12 +562,12 @@ function renderFormationDots(side: 'left' | 'right') {
 
 function labelForEvent(type: MatchEvent['type']) {
   switch (type) {
-    case 'GOAL': return 'GOAL';
-    case 'CARD': return 'CARD';
-    case 'INJURY': return 'INJURY';
-    case 'TACTICAL_WARNING': return 'ALERT';
-    case 'INSIGHT': return 'INSIGHT';
-    default: return 'ACTION';
+    case 'GOAL': return 'ГОЛ';
+    case 'CARD': return 'КАРТА';
+    case 'INJURY': return 'ТРАВМА';
+    case 'TACTICAL_WARNING': return 'ТРЕВОГА';
+    case 'INSIGHT': return 'ИНСАЙТ';
+    default: return 'СОБЫТИЕ';
   }
 }
 
@@ -541,52 +582,9 @@ function eventTone(type: MatchEvent['type']) {
   }
 }
 
-function buildSubstitutionAction(payload: SimulationPayload, issue: MatchIssue) {
-  const players = payload.team.players;
-
-  if (issue.zone === 'left') {
-    const outPlayer = players.find((player) => player.rolePosition === 'LW');
-    const inPlayer = players.find((player) => player.isSubstitute && roleToZone(player.rolePosition) === 'left');
-    if (!outPlayer || !inPlayer) return null;
-    return {
-      substitutions: [{ playerOutId: outPlayer.id, playerInId: inPlayer.id }],
-      tacticalStyle: 'BALANCED' as TacticalStyle,
-      description: 'Applied fix: replaced left winger and switched to BALANCED.',
-    };
-  }
-
-  if (issue.zone === 'right') {
-    const outPlayer = players.find((player) => player.rolePosition === 'RW');
-    const inPlayer = players.find((player) => player.isSubstitute && roleToZone(player.rolePosition) === 'right');
-    if (!outPlayer || !inPlayer) return null;
-    return {
-      substitutions: [{ playerOutId: outPlayer.id, playerInId: inPlayer.id }],
-      tacticalStyle: 'BALANCED' as TacticalStyle,
-      description: 'Applied fix: reinforced right flank and switched to BALANCED.',
-    };
-  }
-
-  const outMid = players.find((player) => player.rolePosition === 'RCM' || player.rolePosition === 'LCM');
-  const inMid = players.find((player) => player.isSubstitute && (player.naturalPosition === 'CDM' || player.rolePosition === 'CDM'));
-  if (!outMid || !inMid) return null;
-  
-  return {
-    substitutions: [{ playerOutId: outMid.id, playerInId: inMid.id, newRolePosition: 'CDM' }],
-    tacticalStyle: 'BALANCED' as TacticalStyle,
-    description: 'Applied fix: added extra defensive midfielder and switched to BALANCED.',
-  };
-}
-
-function roleToZone(rolePosition: string): 'left' | 'center' | 'right' {
-  const role = rolePosition.toUpperCase();
-  if (role.startsWith('L')) return 'left';
-  if (role.startsWith('R')) return 'right';
-  return 'center';
-}
-
 function formatImpact(response: SubstitutionResponse): string {
   const deltas = response.impactPreview.deltas;
-  return `Impact: Control ${signed(deltas.controlDelta)}, Chance ${signed(deltas.chanceCreationDelta)}, Defense ${signed(deltas.defenseDelta)}, Left Risk ${signed(deltas.leftRiskDelta)}, Right Risk ${signed(deltas.rightRiskDelta)}, Pressing ${signed(deltas.pressingDelta)}.`;
+  return `Влияние: контроль ${signed(deltas.controlDelta)}, моменты ${signed(deltas.chanceCreationDelta)}, оборона ${signed(deltas.defenseDelta)}, риск слева ${signed(deltas.leftRiskDelta)}, риск справа ${signed(deltas.rightRiskDelta)}, прессинг ${signed(deltas.pressingDelta)}.`;
 }
 
 function signed(value: number): string {
@@ -597,7 +595,7 @@ function FatiguePanel({ players, currentMinute }: { players: any[], currentMinut
   return (
     <section className="glass-panel rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Squad Fatigue</p>
+        <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Усталость Состава</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] sm:max-h-none overflow-y-auto custom-scrollbar pr-1">
         {players.map(p => {
@@ -622,3 +620,4 @@ function FatiguePanel({ players, currentMinute }: { players: any[], currentMinut
     </section>
   );
 }
+

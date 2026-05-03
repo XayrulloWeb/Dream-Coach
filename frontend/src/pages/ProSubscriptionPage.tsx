@@ -2,17 +2,17 @@
 import MobileBottomNav from '../components/MobileBottomNav';
 
 const FREE_FEATURES = [
-  '5 match simulations per day',
-  'Up to 3 saved squads',
-  'Basic match report',
+  '5 симуляций матчей в день',
+  'До 3 сохраненных составов',
+  'Базовый отчет матча',
 ];
 
 const PRO_FEATURES = [
-  'Unlimited simulations',
-  'Advanced AI tactical analysis',
-  'Unlimited saved squads',
-  'Tournament mode and challenge boosts',
-  'Premium share cards',
+  'Неограниченные симуляции',
+  'Продвинутый ИИ-тактический анализ',
+  'Неограниченные сохраненные составы',
+  'Режим сезона и бонусы испытаний',
+  'Премиальные карточки для шаринга',
 ];
 
 export default function ProSubscriptionPage() {
@@ -26,13 +26,13 @@ export default function ProSubscriptionPage() {
           <button onClick={() => navigate('/profile')} className="text-slate-300">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">PRO SUBSCRIPTION</h1>
+          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">ПОДПИСКА PRO</h1>
           <div className="w-8" />
         </header>
 
         <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Current Plan</p>
-          <h2 className="mt-2 text-2xl font-semibold">Free</h2>
+          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Текущий тариф</p>
+          <h2 className="mt-2 text-2xl font-semibold">Бесплатный</h2>
           <ul className="mt-3 space-y-1 text-sm text-slate-300">
             {FREE_FEATURES.map((item) => (
               <li key={item}>- {item}</li>
@@ -42,17 +42,17 @@ export default function ProSubscriptionPage() {
 
         <section className="rounded-2xl border border-[#A3E63566] bg-[#0A2116]/85 p-4">
           <p className="text-xs uppercase tracking-[0.12em] text-[#A3E635]">Dream Coach Pro</p>
-          <h3 className="mt-2 text-2xl font-semibold text-emerald-300">$7.99 / month</h3>
+          <h3 className="mt-2 text-2xl font-semibold text-emerald-300">$7.99 / месяц</h3>
           <ul className="mt-3 space-y-1 text-sm text-slate-200">
             {PRO_FEATURES.map((item) => (
               <li key={item}>- {item}</li>
             ))}
           </ul>
           <button
-            onClick={() => window.alert('Billing integration comes in next release.')}
+            onClick={() => window.alert('Интеграция оплаты появится в следующем релизе.')}
             className="mt-4 w-full rounded-xl bg-[#22C55E] py-3 font-['Lexend'] font-semibold text-[#06210F]"
           >
-            UPGRADE TO PRO
+            ПЕРЕЙТИ НА PRO
           </button>
         </section>
       </main>
@@ -61,3 +61,4 @@ export default function ProSubscriptionPage() {
     </div>
   );
 }
+

@@ -79,9 +79,23 @@ type SeedOptions = {
   datasetVersion: string | null;
 };
 
-const DEFAULT_PLAYERS_CSV_PATH = path.resolve(process.cwd(), 'data', 'players.csv');
-const DEFAULT_FIFA_CSV_PATH = path.resolve(process.cwd(), 'data', 'fifa_players.csv');
-const DEFAULT_MAPPING_PATH = path.resolve(process.cwd(), 'data', 'mappings', 'fifa_players.mapping.json');
+const DEFAULT_PLAYERS_CSV_PATH = path.resolve(process.cwd(), 'data', 'datasets', 'players', 'players.csv');
+const DEFAULT_FIFA_CSV_PATH = path.resolve(process.cwd(), 'data', 'datasets', 'players', 'fifa_players.csv');
+const DEFAULT_FUT_CSV_PATH = path.resolve(
+  process.cwd(),
+  'data',
+  'datasets',
+  'players',
+  'fut',
+  'FIFA_23_Fut_Players.csv'
+);
+const DEFAULT_MAPPING_PATH = path.resolve(
+  process.cwd(),
+  'data',
+  'datasets',
+  'mappings',
+  'fifa_players.mapping.json'
+);
 const DEFAULT_DATASET_NAME = 'fifa-player-dataset';
 
 const DEFAULT_ALIASES: PlayerColumnMapping = {
@@ -90,9 +104,9 @@ const DEFAULT_ALIASES: PlayerColumnMapping = {
   name: ['name', 'short_name', 'player_name'],
   fullName: ['full_name', 'long_name'],
   age: ['age'],
-  positions: ['player_positions', 'positions'],
-  bestPosition: ['best_position', 'real_position', 'position'],
-  rating: ['overall', 'rating', 'ovr'],
+  positions: ['player_positions', 'positions', 'pos'],
+  bestPosition: ['best_position', 'real_position', 'position', 'pos'],
+  rating: ['overall', 'rating', 'ovr', 'rat'],
   potential: ['potential'],
   pac: ['pac', 'pace'],
   sho: ['sho', 'shooting', 'shot_power', 'finishing'],
@@ -108,10 +122,10 @@ const DEFAULT_ALIASES: PlayerColumnMapping = {
   interceptions: ['interceptions'],
   positioning: ['positioning', 'attacking_positioning'],
   preferredFoot: ['preferred_foot', 'foot'],
-  weakFoot: ['weak_foot', 'weakfoot'],
-  skillMoves: ['skill_moves', 'skillmoves'],
-  attackWorkRate: ['attacking_work_rate', 'attack_work_rate', 'att_wr'],
-  defenseWorkRate: ['defensive_work_rate', 'defense_work_rate', 'def_wr'],
+  weakFoot: ['weak_foot', 'weakfoot', 'wf'],
+  skillMoves: ['skill_moves', 'skillmoves', 'ski'],
+  attackWorkRate: ['attacking_work_rate', 'attack_work_rate', 'att_wr', 'wr'],
+  defenseWorkRate: ['defensive_work_rate', 'defense_work_rate', 'def_wr', 'wr'],
 };
 
 async function main() {
@@ -240,7 +254,15 @@ function resolveDefaultCsvPath(): string {
     return path.resolve(process.cwd(), process.env.PLAYER_CSV_PATH);
   }
 
-  return existsSync(DEFAULT_FIFA_CSV_PATH) ? DEFAULT_FIFA_CSV_PATH : DEFAULT_PLAYERS_CSV_PATH;
+  if (existsSync(DEFAULT_FUT_CSV_PATH)) {
+    return DEFAULT_FUT_CSV_PATH;
+  }
+
+  if (existsSync(DEFAULT_FIFA_CSV_PATH)) {
+    return DEFAULT_FIFA_CSV_PATH;
+  }
+
+  return DEFAULT_PLAYERS_CSV_PATH;
 }
 
 async function loadMapping(mappingPath: string): Promise<PlayerColumnMapping> {
@@ -262,11 +284,10 @@ async function loadMapping(mappingPath: string): Promise<PlayerColumnMapping> {
 
   for (const key of Object.keys(DEFAULT_ALIASES) as MappingKey[]) {
     const aliases = fields[key];
-    if (!aliases?.length) {
-      continue;
-    }
-
-    mapping[key] = aliases.map((value) => normalizeHeader(value));
+    const merged = [...DEFAULT_ALIASES[key], ...(aliases ?? [])]
+      .map((value) => normalizeHeader(value))
+      .filter(Boolean);
+    mapping[key] = Array.from(new Set(merged));
   }
 
   return mapping;
@@ -446,8 +467,8 @@ function normalizeRow(row: CsvRow, mapping: PlayerColumnMapping): PlayerCreateIn
     preferredFoot,
     weakFoot,
     skillMoves,
-    attackWorkRate: normalizeWorkRate(pick(row, mapping.attackWorkRate)),
-    defenseWorkRate: normalizeWorkRate(pick(row, mapping.defenseWorkRate)),
+    attackWorkRate: normalizeWorkRate(pick(row, mapping.attackWorkRate), 'attack'),
+    defenseWorkRate: normalizeWorkRate(pick(row, mapping.defenseWorkRate), 'defense'),
   };
 }
 
@@ -469,18 +490,21 @@ function normalizePosition(value: string): string {
 function normalizePositions(value: string): string[] {
   const parts = value
     .split(/[;,]/)
+    .flatMap((part) => part.trim().split(/\s+/))
     .map((part) => normalizePosition(part))
     .filter(Boolean);
 
   return parts.length ? Array.from(new Set(parts)) : ['CM'];
 }
 
-function normalizeWorkRate(value: string): 'LOW' | 'MEDIUM' | 'HIGH' {
+function normalizeWorkRate(value: string, slot: 'attack' | 'defense'): 'LOW' | 'MEDIUM' | 'HIGH' {
   const normalized = value.trim().toUpperCase();
-  if (normalized.startsWith('H')) {
+  const tokens = normalized.split(/[\\/|-]/).map((token) => token.trim()).filter(Boolean);
+  const selected = tokens.length >= 2 ? (slot === 'attack' ? tokens[0] : tokens[1]) ?? '' : normalized;
+  if (selected.startsWith('H')) {
     return 'HIGH';
   }
-  if (normalized.startsWith('L')) {
+  if (selected.startsWith('L')) {
     return 'LOW';
   }
   return 'MEDIUM';

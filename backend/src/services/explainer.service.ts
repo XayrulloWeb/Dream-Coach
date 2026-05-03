@@ -1,4 +1,16 @@
-import { SubstitutionAction, TacticalStyle } from '../types/simulation';
+import { TacticalStyle, type MatchFinalReport, type TeamInput } from '../types/simulation';
+import { generateGeminiMatchExplanation } from './gemini.service';
+
+type MvpInput = {
+  playerId: string;
+  name: string;
+  rating: number;
+  reason: string;
+  stats?: {
+    goals: number;
+    assists: number;
+  };
+} | null;
 
 type DeltaMap = {
   controlDelta: number;
@@ -60,27 +72,69 @@ export function explainSubstitutionImpact(
   return { summary, warningsResolved, newWarnings };
 }
 
-export function explainMatchReport(
-  simulation: any,
-  mvp: any,
+export async function explainMatchReport(
+  simulation: Omit<MatchFinalReport, 'tacticalSummary' | 'coachCard'>,
+  mvp: MvpInput,
   hasSubstitutions: boolean,
-  team: any
+  team: TeamInput,
+): Promise<{
+  tacticalSummary: MatchFinalReport['tacticalSummary'];
+  coachCard: NonNullable<MatchFinalReport['coachCard']>;
+}> {
+  const fallback = buildFallbackMatchExplanation(simulation, mvp, hasSubstitutions, team);
+
+  const gemini = await generateGeminiMatchExplanation({
+    report: simulation,
+    hasSubstitutions,
+    team,
+  });
+
+  if (!gemini) {
+    return fallback;
+  }
+
+  if (mvp && gemini.mvpReason) {
+    mvp.reason = gemini.mvpReason;
+  }
+
+  const tacticalSummary: MatchFinalReport['tacticalSummary'] = {
+    whatWorked: gemini.tacticalSummary.whatWorked,
+    whatFailed: gemini.tacticalSummary.whatFailed,
+    nextMatchAdvice: gemini.tacticalSummary.nextMatchAdvice,
+    ...(gemini.tacticalSummary.keyDecision ? { keyDecision: gemini.tacticalSummary.keyDecision } : {}),
+  };
+
+  return {
+    tacticalSummary,
+    coachCard: {
+      ...fallback.coachCard,
+      ...(gemini.coachCard?.keyDecision ? { keyDecision: gemini.coachCard.keyDecision } : {}),
+      ...(gemini.coachCard?.tacticalTag ? { tacticalTag: gemini.coachCard.tacticalTag } : {}),
+    },
+  };
+}
+
+function buildFallbackMatchExplanation(
+  simulation: Omit<MatchFinalReport, 'tacticalSummary' | 'coachCard'>,
+  mvp: MvpInput,
+  hasSubstitutions: boolean,
+  team: TeamInput,
 ) {
   const whatWorked: string[] = [];
   const whatFailed: string[] = [];
   const nextMatchAdvice: string[] = [];
-  let keyDecision = undefined;
+  let keyDecision: string | undefined;
 
   const isWin = simulation.score.home > simulation.score.away;
   const isLoss = simulation.score.home < simulation.score.away;
 
   // MVP impact
   if (mvp) {
-    if (mvp.stats.goals > 0) {
-      whatWorked.push(`${mvp.name}'s performance was decisive, securing ${mvp.stats.goals} goals.`);
+    if ((mvp.stats?.goals ?? 0) > 0) {
+      whatWorked.push(`${mvp.name}'s performance was decisive, securing ${mvp.stats?.goals ?? 0} goals.`);
       mvp.reason = 'Clinical finishing in the final third';
-    } else if (mvp.stats.assists > 0) {
-      whatWorked.push(`${mvp.name} orchestrated the attack perfectly with ${mvp.stats.assists} assists.`);
+    } else if ((mvp.stats?.assists ?? 0) > 0) {
+      whatWorked.push(`${mvp.name} orchestrated the attack perfectly with ${mvp.stats?.assists ?? 0} assists.`);
       mvp.reason = 'Elite chance creation and playmaking';
     } else {
       whatWorked.push(`${mvp.name} controlled the tempo and dominated their zone.`);
@@ -122,10 +176,10 @@ export function explainMatchReport(
   if (whatFailed.length === 0) whatFailed.push('No significant tactical failures detected.');
   if (nextMatchAdvice.length === 0) nextMatchAdvice.push('Maintain the current approach for the next match.');
 
-  const coachCard = {
+  const coachCard: NonNullable<MatchFinalReport['coachCard']> = {
     title: 'DREAM COACH',
     score: `Dream FC ${simulation.score.home} - ${simulation.score.away} Rival`,
-    formation: '4-3-3', // Placeholder for now
+    formation: team.formation,
     mvp: mvp ? { name: mvp.name, rating: mvp.rating } : null,
     keyDecision: keyDecision || 'Maintained starting gameplan',
     tacticalTag: team.tacticalStyle,
@@ -135,7 +189,7 @@ export function explainMatchReport(
     tacticalSummary: {
       whatWorked,
       whatFailed,
-      keyDecision,
+      ...(keyDecision ? { keyDecision } : {}),
       nextMatchAdvice,
     },
     coachCard,

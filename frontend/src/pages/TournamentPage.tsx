@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { toApiError } from '../lib/api';
@@ -70,7 +70,7 @@ export default function TournamentPage() {
 
   const onPlayNextRound = () => {
     if (!nextFixture) {
-      setMessage('No upcoming fixture found.');
+      setMessage('Не найден ближайший матч.');
       return;
     }
 
@@ -84,7 +84,7 @@ export default function TournamentPage() {
 
   const onApplyLastMatchResult = async () => {
     if (!nextFixture || !lastMatchScore) {
-      setMessage('No next fixture or no last match report found.');
+      setMessage('Нет следующего матча или отсутствует последний отчет.');
       return;
     }
 
@@ -95,7 +95,7 @@ export default function TournamentPage() {
         homeScore: lastMatchScore.home,
         awayScore: lastMatchScore.away,
       });
-      setMessage(`Round ${nextFixture.round} saved: ${lastMatchScore.home}-${lastMatchScore.away}`);
+      setMessage(`Тур ${nextFixture.round} сохранен: ${lastMatchScore.home}-${lastMatchScore.away}`);
       localStorage.removeItem(TOURNAMENT_NEXT_FIXTURE_KEY);
       await reload();
     } catch (reason) {
@@ -113,21 +113,21 @@ export default function TournamentPage() {
   }, [season]);
 
   return (
-    <AppShell title="Tournament" activeTab="tournament" hideHeader>
+    <AppShell title="Турнир" activeTab="more" hideHeader>
       <header className="w-full z-40 bg-[var(--color-surface)] border-b border-white/5 pt-safe sticky top-0">
         <div className="flex items-center px-5 py-4">
-          <button 
-            onClick={() => navigate('/dashboard')} 
+          <button
+            onClick={() => navigate('/dashboard')}
             className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full mr-3"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
           <div className="flex-1">
-            <h1 className="font-['Lexend'] text-lg text-white">Season Mode</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">League campaign</p>
+            <h1 className="font-['Lexend'] text-lg text-white">Режим сезона</h1>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Лига</p>
           </div>
-          <button 
-            onClick={() => void reload()} 
+          <button
+            onClick={() => void reload()}
             className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full"
           >
             <span className="material-symbols-outlined text-[20px]">refresh</span>
@@ -136,23 +136,22 @@ export default function TournamentPage() {
       </header>
 
       <main className="px-5 py-6 space-y-6">
-
         <section className="glass-panel rounded-2xl p-5">
-          <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4">League Progress</p>
-          {loading ? <p className="text-sm text-[var(--color-on-surface-variant)]">Loading tournament...</p> : null}
+          <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4">Прогресс в лиге</p>
+          {loading ? <p className="text-sm text-[var(--color-on-surface-variant)]">Загрузка турнира...</p> : null}
 
           <div className="grid grid-cols-3 gap-3 mb-3">
-            <Stat label="Played" value={season ? String(season.played) : '-'} />
-            <Stat label="Points" value={season ? String(season.points) : '-'} />
-            <Stat label="Position" value={position} />
+            <Stat label="Сыграно" value={season ? String(season.played) : '-'} />
+            <Stat label="Очки" value={season ? String(season.points) : '-'} />
+            <Stat label="Позиция" value={position} />
           </div>
 
           <div className="grid grid-cols-4 gap-3">
-            <MiniStat label="W" value={season ? String(season.wins) : '-'} color="text-[var(--color-primary)]" />
-            <MiniStat label="D" value={season ? String(season.draws) : '-'} color="text-[var(--color-warning)]" />
-            <MiniStat label="L" value={season ? String(season.losses) : '-'} color="text-[var(--color-danger)]" />
+            <MiniStat label="П" value={season ? String(season.wins) : '-'} color="text-[var(--color-primary)]" />
+            <MiniStat label="Н" value={season ? String(season.draws) : '-'} color="text-[var(--color-warning)]" />
+            <MiniStat label="ПР" value={season ? String(season.losses) : '-'} color="text-[var(--color-danger)]" />
             <MiniStat
-              label="GD"
+              label="РМ"
               value={season ? String(season.goalsFor - season.goalsAgainst) : '-'}
               color="text-[var(--color-blue-accent)]"
             />
@@ -160,7 +159,7 @@ export default function TournamentPage() {
         </section>
 
         <section className="glass-panel rounded-2xl p-5">
-          <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4">Upcoming Fixtures</p>
+          <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4">Ближайшие матчи</p>
           <div className="space-y-3">
             {fixtures.length ? (
               fixtures.map((fixture) => (
@@ -169,28 +168,40 @@ export default function TournamentPage() {
                   className="rounded-xl border border-white/5 bg-[var(--color-surface-container-high)] px-4 py-3 flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-semibold text-white">Round {fixture.round}: <span className="font-normal text-[var(--color-on-surface-variant)]">vs {fixture.opponentName}</span></p>
+                    <p className="font-semibold text-white">
+                      Тур {fixture.round}: <span className="font-normal text-[var(--color-on-surface-variant)]">против {fixture.opponentName}</span>
+                    </p>
                     {fixture.played ? (
-                      <p className="text-xs text-[var(--color-on-surface-variant)] mt-1">Played • {fixture.homeScore}-{fixture.awayScore}</p>
+                      <p className="text-xs text-[var(--color-on-surface-variant)] mt-1">Сыграно • {fixture.homeScore}-{fixture.awayScore}</p>
                     ) : (
-                      <p className="text-xs text-[var(--color-primary)] font-bold mt-1 tracking-wide uppercase">Next Target Fixture</p>
+                      <p className="text-xs text-[var(--color-primary)] font-bold mt-1 tracking-wide uppercase">Следующий матч</p>
                     )}
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${fixture.result === 'WIN' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : fixture.result === 'LOSS' ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]' : fixture.result === 'DRAW' ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]' : 'bg-black/20 text-[var(--color-on-surface-variant)]'}`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${
+                      fixture.result === 'WIN'
+                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                        : fixture.result === 'LOSS'
+                        ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'
+                        : fixture.result === 'DRAW'
+                        ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                        : 'bg-black/20 text-[var(--color-on-surface-variant)]'
+                    }`}
+                  >
                     {fixture.result ?? '-'}
                   </span>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-[var(--color-on-surface-variant)]">No fixtures yet.</p>
+              <p className="text-sm text-[var(--color-on-surface-variant)]">Пока нет расписания.</p>
             )}
           </div>
         </section>
 
         <section className="glass-panel rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Recent Results</p>
-            <span className="text-xs font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded">{recentMatches.length} matches</span>
+            <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Последние результаты</p>
+            <span className="text-xs font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded">{recentMatches.length} матчей</span>
           </div>
           <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
             {recentMatches.length ? (
@@ -199,12 +210,19 @@ export default function TournamentPage() {
                 .reverse()
                 .map((match) => (
                   <div key={match.id} className="rounded-xl border border-white/5 bg-[var(--color-surface-container-high)] px-4 py-3">
-                    <p className="font-semibold text-white">R{match.round} <span className="font-normal text-[var(--color-on-surface-variant)]">vs {match.opponentName}</span></p>
-                    <p className="text-xs text-[var(--color-on-surface-variant)] mt-1 font-bold"><span className={`${match.result === 'WIN' ? 'text-[var(--color-primary)]' : match.result === 'LOSS' ? 'text-[var(--color-danger)]' : 'text-[var(--color-warning)]'}`}>{match.result ?? '-'}</span> • {match.homeScore ?? '-'}-{match.awayScore ?? '-'}</p>
+                    <p className="font-semibold text-white">
+                      Т{match.round} <span className="font-normal text-[var(--color-on-surface-variant)]">против {match.opponentName}</span>
+                    </p>
+                    <p className="text-xs text-[var(--color-on-surface-variant)] mt-1 font-bold">
+                      <span className={`${match.result === 'WIN' ? 'text-[var(--color-primary)]' : match.result === 'LOSS' ? 'text-[var(--color-danger)]' : 'text-[var(--color-warning)]'}`}>
+                        {match.result ?? '-'}
+                      </span>{' '}
+                      • {match.homeScore ?? '-'}-{match.awayScore ?? '-'}
+                    </p>
                   </div>
                 ))
             ) : (
-              <p className="text-sm text-[var(--color-on-surface-variant)]">No results recorded.</p>
+              <p className="text-sm text-[var(--color-on-surface-variant)]">Результаты пока не записаны.</p>
             )}
           </div>
         </section>
@@ -215,7 +233,7 @@ export default function TournamentPage() {
             disabled={!nextFixture}
             className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-fixed)] text-[var(--color-on-primary)] py-4 rounded-xl font-bold transition-all disabled:opacity-50 neon-glow"
           >
-            PLAY NEXT ROUND
+            ИГРАТЬ СЛЕДУЮЩИЙ ТУР
           </button>
 
           <button
@@ -223,11 +241,11 @@ export default function TournamentPage() {
             disabled={!nextFixture || !lastMatchScore}
             className="w-full rounded-xl border border-[var(--color-blue-accent)]/60 bg-[var(--color-blue-accent)]/10 py-4 font-bold text-[var(--color-blue-accent)] disabled:opacity-40 transition-colors hover:bg-[var(--color-blue-accent)]/20"
           >
-            APPLY LAST MATCH RESULT
+            ПРИМЕНИТЬ РЕЗУЛЬТАТ ПОСЛЕДНЕГО МАТЧА
           </button>
         </div>
 
-        {error ? <p className="text-xs text-[var(--color-danger)] text-center pb-4">API warning: {error}</p> : null}
+        {error ? <p className="text-xs text-[var(--color-danger)] text-center pb-4">Предупреждение API: {error}</p> : null}
         {message ? <p className="text-xs text-[var(--color-primary)] text-center pb-4">{message}</p> : null}
       </main>
     </AppShell>
@@ -251,4 +269,3 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
     </div>
   );
 }
-

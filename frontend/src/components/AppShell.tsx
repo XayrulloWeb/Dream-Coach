@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MobileBottomNav from './MobileBottomNav';
 
 interface AppShellProps {
@@ -22,7 +22,6 @@ export default function AppShell({
   activeTab,
 }: AppShellProps) {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleBack = () => {
     if (backTo) {
@@ -45,7 +44,7 @@ export default function AppShell({
               <button 
                 onClick={handleBack} 
                 className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors"
-                aria-label="Go back"
+                aria-label="Назад"
               >
                 <span className="material-symbols-outlined text-2xl">arrow_back</span>
               </button>
@@ -60,10 +59,10 @@ export default function AppShell({
             <button 
               onClick={() => navigate('/profile')} 
               className="w-8 h-8 rounded-full bg-[var(--color-surface-container-high)] overflow-hidden border border-[var(--color-outline-variant)] hover:border-[var(--color-primary)] transition-colors"
-              aria-label="Profile"
+              aria-label="Профиль"
             >
               <img
-                alt="User Avatar"
+                alt="Аватар пользователя"
                 className="w-full h-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQITB1X7YNiLHQ9Kl0mG9s7M7ShhtxGSisADKkRh9CHKW423xHtpIp0l3BsdkEqdAh_VhOzCWCXMMb6srvtkabDowKy5WmpL7EEnffHyuyCaehy-u9nyLyGUOCffneEOZ4oC8EXXUZRLcUOoCRW2PPo0M2yjsPUmN42JMDvRAWMUcpFr1z09AvDquTns0TBvVMCHImoPEu1LxWgQ3GkEcLYCeMMna4CaVnn5GYQFdqU11ZzUZFtHCfmHvy0UchBSvYRaQemVTIYho"
               />

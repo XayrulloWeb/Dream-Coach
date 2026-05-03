@@ -19,7 +19,7 @@ export default function ProfilePage() {
           <button onClick={() => navigate('/dashboard')} className="text-slate-300">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">PROFILE</h1>
+          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">ПРОФИЛЬ</h1>
           <div className="w-8" />
         </header>
 
@@ -27,33 +27,33 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 rounded-full border border-emerald-400/70 overflow-hidden">
               <img
-                alt="Coach"
+                alt="Тренер"
                 className="h-full w-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuADD6abTEPgXscS6PNdp5KldcuYittHdY8udopx6Tbqw5-z-5OSrNkVQ-uhS4cNzoewoKJig5_Tx-ets-UDwO9zk26aVF9mmm3CgVAvfI3wme_OvlnPmZt0xrXFluxORdvA0xzZpdVkzaxECw_ZgdKDAdsDNTqToo_f99DUNAW2Qkw2PSlePCgJHSBOmA_X_tO2ltz_7wfVLv-TJm-Q3HoOlFeeCTDKj6t-6HdfdRNHo2VT9yR50TMPX3YnkrjxxvYzrbmop4GIi4s"
               />
             </div>
             <div>
-              <p className="text-sm text-slate-400">Coach Identity</p>
+              <p className="text-sm text-slate-400">Профиль тренера</p>
               <p className="text-xl font-semibold">Dream Coach</p>
-              <p className="text-xs text-emerald-300 mt-1">Elite Division</p>
+              <p className="text-xs text-emerald-300 mt-1">Элитный дивизион</p>
             </div>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <Stat label="Matches" value={`${matches.length}`} />
-            <Stat label="Win Rate" value={`${winRate}%`} />
-            <Stat label="Squads" value={`${squads.length}`} />
+            <Stat label="Матчи" value={`${matches.length}`} />
+            <Stat label="Процент побед" value={`${winRate}%`} />
+            <Stat label="Составы" value={`${squads.length}`} />
           </div>
         </section>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <MenuButton title="Saved Squads" subtitle="Manage your builds" onClick={() => navigate('/saved-squads')} icon="shield" />
-          <MenuButton title="Challenges" subtitle="Compete with community" onClick={() => navigate('/community-challenges')} icon="emoji_events" />
-          <MenuButton title="Settings" subtitle="App and account" onClick={() => navigate('/settings')} icon="settings" />
-          <MenuButton title="Match Analysis" subtitle="Deeper tactical read" onClick={() => navigate('/match-analysis')} icon="analytics" />
-          <MenuButton title="Notifications" subtitle="Updates and alerts" onClick={() => navigate('/notifications')} icon="notifications" />
-          <MenuButton title="Season Mode" subtitle="League progression" onClick={() => navigate('/tournament')} icon="trophy" />
-          <MenuButton title="Dream Coach Pro" subtitle="Upgrade features" onClick={() => navigate('/pro-subscription')} icon="workspace_premium" />
+          <MenuButton title="Сохраненные составы" subtitle="Управление заготовками" onClick={() => navigate('/saved-squads')} icon="shield" />
+          <MenuButton title="Испытания" subtitle="Соревнования с сообществом" onClick={() => navigate('/community-challenges')} icon="emoji_events" />
+          <MenuButton title="Настройки" subtitle="Приложение и аккаунт" onClick={() => navigate('/settings')} icon="settings" />
+          <MenuButton title="Разбор матча" subtitle="Детальный тактический анализ" onClick={() => navigate('/match-analysis')} icon="analytics" />
+          <MenuButton title="Уведомления" subtitle="Обновления и оповещения" onClick={() => navigate('/notifications')} icon="notifications" />
+          <MenuButton title="Режим сезона" subtitle="Прогресс в лиге" onClick={() => navigate('/tournament')} icon="trophy" />
+          <MenuButton title="Dream Coach Pro" subtitle="Расширенные функции" onClick={() => navigate('/pro-subscription')} icon="workspace_premium" />
         </section>
       </main>
 

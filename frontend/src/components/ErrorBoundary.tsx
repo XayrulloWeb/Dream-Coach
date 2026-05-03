@@ -1,4 +1,4 @@
-import { Component, type ReactNode, type ErrorInfo } from 'react';
+﻿import { Component, type ReactNode, type ErrorInfo } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -45,10 +45,10 @@ export default class ErrorBoundary extends Component<Props, State> {
           </div>
 
           <h1 className="font-['Lexend'] text-2xl font-bold text-white mb-2">
-            Something went wrong
+            Что-то пошло не так
           </h1>
           <p className="text-[var(--color-on-surface-variant)] text-sm mb-1 leading-relaxed" style={{ maxWidth: '320px' }}>
-            An unexpected error occurred. Don't worry — your data is safe.
+            Произошла непредвиденная ошибка. Не переживай, данные в безопасности.
           </p>
           
           {this.state.error && (
@@ -65,7 +65,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               boxShadow: '0 0 20px rgba(34,197,94,0.3)',
             }}
           >
-            Go Home
+            На главную
           </button>
         </div>
       );
@@ -74,3 +74,4 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+

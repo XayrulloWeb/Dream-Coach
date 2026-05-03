@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../components/MobileBottomNav';
 
-const SETTINGS_KEY = 'dc_app_settings';
+const НАСТРОЙКИ_KEY = 'dc_app_settings';
 
 type AppSettings = {
   notifications: boolean;
@@ -11,7 +11,7 @@ type AppSettings = {
   dataSaver: boolean;
 };
 
-const DEFAULT_SETTINGS: AppSettings = {
+const DEFAULT_НАСТРОЙКИ: AppSettings = {
   notifications: true,
   autoSaveSquads: true,
   reducedMotion: false,
@@ -19,21 +19,21 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 function readSettings(): AppSettings {
-  const raw = localStorage.getItem(SETTINGS_KEY);
+  const raw = localStorage.getItem(НАСТРОЙКИ_KEY);
   if (!raw) {
-    return DEFAULT_SETTINGS;
+    return DEFAULT_НАСТРОЙКИ;
   }
 
   try {
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     return {
-      notifications: parsed.notifications ?? DEFAULT_SETTINGS.notifications,
-      autoSaveSquads: parsed.autoSaveSquads ?? DEFAULT_SETTINGS.autoSaveSquads,
-      reducedMotion: parsed.reducedMotion ?? DEFAULT_SETTINGS.reducedMotion,
-      dataSaver: parsed.dataSaver ?? DEFAULT_SETTINGS.dataSaver,
+      notifications: parsed.notifications ?? DEFAULT_НАСТРОЙКИ.notifications,
+      autoSaveSquads: parsed.autoSaveSquads ?? DEFAULT_НАСТРОЙКИ.autoSaveSquads,
+      reducedMotion: parsed.reducedMotion ?? DEFAULT_НАСТРОЙКИ.reducedMotion,
+      dataSaver: parsed.dataSaver ?? DEFAULT_НАСТРОЙКИ.dataSaver,
     };
   } catch {
-    return DEFAULT_SETTINGS;
+    return DEFAULT_НАСТРОЙКИ;
   }
 }
 
@@ -42,7 +42,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(() => readSettings());
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.setItem(НАСТРОЙКИ_KEY, JSON.stringify(settings));
   }, [settings]);
 
   return (
@@ -52,39 +52,39 @@ export default function SettingsPage() {
           <button onClick={() => navigate('/profile')} className="text-slate-300">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">SETTINGS</h1>
+          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">НАСТРОЙКИ</h1>
           <div className="w-8" />
         </header>
 
         <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4 space-y-2">
           <SwitchRow
-            label="Notifications"
-            hint="Match alerts and challenge updates"
+            label="Уведомления"
+            hint="Оповещения о матчах и челленджах"
             checked={settings.notifications}
             onChange={(value) => setSettings((prev) => ({ ...prev, notifications: value }))}
           />
           <SwitchRow
-            label="Auto Save Squads"
-            hint="Automatically store latest team snapshots"
+            label="Автосохранение составов"
+            hint="Автоматически сохранять последние версии состава"
             checked={settings.autoSaveSquads}
             onChange={(value) => setSettings((prev) => ({ ...prev, autoSaveSquads: value }))}
           />
           <SwitchRow
-            label="Reduced Motion"
-            hint="Lower animation intensity"
+            label="Уменьшенная анимация"
+            hint="Снизить интенсивность анимаций"
             checked={settings.reducedMotion}
             onChange={(value) => setSettings((prev) => ({ ...prev, reducedMotion: value }))}
           />
           <SwitchRow
-            label="Data Saver"
-            hint="Prefer lightweight assets"
+            label="Экономия трафика"
+            hint="Использовать облегченные ресурсы"
             checked={settings.dataSaver}
             onChange={(value) => setSettings((prev) => ({ ...prev, dataSaver: value }))}
           />
         </section>
 
         <section className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4">
-          <p className="text-sm text-rose-200">Account</p>
+          <p className="text-sm text-rose-200">Аккаунт</p>
           <button
             onClick={() => {
               localStorage.removeItem('token');
@@ -92,7 +92,7 @@ export default function SettingsPage() {
             }}
             className="mt-3 rounded-lg border border-rose-400/70 px-3 py-2 text-sm text-rose-200"
           >
-            Logout
+            Выйти
           </button>
         </section>
       </main>
@@ -123,3 +123,4 @@ function SwitchRow({
     </label>
   );
 }
+

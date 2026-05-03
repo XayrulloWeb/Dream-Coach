@@ -17,14 +17,14 @@ export default function TeamStatsGrid({ report }: { report: MatchFinalReport }) 
   return (
     <section className="glass-panel rounded-2xl p-4">
       <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-3 flex items-center gap-2">
-        <span className="material-symbols-outlined text-sm">bar_chart</span> Team Stats
+        <span className="material-symbols-outlined text-sm">bar_chart</span> Статистика команд
       </p>
       <div className="grid grid-cols-4 gap-2">
-        <TopStat title="Poss" home={`${report.stats.home.possession}%`} away={`${report.stats.away.possession}%`} />
-        <TopStat title="Shots" home={`${report.stats.home.shots}`} away={`${report.stats.away.shots}`} />
-        <TopStat title="On Tgt" home={`${report.stats.home.shotsOnTarget}`} away={`${report.stats.away.shotsOnTarget}`} />
+        <TopStat title="Влад." home={`${report.stats.home.possession}%`} away={`${report.stats.away.possession}%`} />
+        <TopStat title="Удары" home={`${report.stats.home.shots}`} away={`${report.stats.away.shots}`} />
+        <TopStat title="В створ" home={`${report.stats.home.shotsOnTarget}`} away={`${report.stats.away.shotsOnTarget}`} />
         <TopStat title="xG" home={`${report.stats.home.xg}`} away={`${report.stats.away.xg}`} />
-        <TopStat title="Big Ch" home={`${report.stats.home.bigChances}`} away={`${report.stats.away.bigChances}`} />
+        <TopStat title="Момент" home={`${report.stats.home.bigChances}`} away={`${report.stats.away.bigChances}`} />
       </div>
     </section>
   );

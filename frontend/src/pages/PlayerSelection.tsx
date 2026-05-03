@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../lib/api';
 import { fetchPlayers, type CatalogPlayer } from '../lib/players';
@@ -10,6 +11,7 @@ import {
 import { saveSquadSnapshot } from '../lib/savedSquads';
 import type { TacticalStyle, TeamRatings } from '../types/simulation';
 import MobileBottomNav from '../components/MobileBottomNav';
+import PlayerCard from '../components/PlayerCard';
 
 type Slot = {
   id: string;
@@ -19,11 +21,6 @@ type Slot = {
 };
 
 type AssignmentMap = Record<string, CatalogPlayer | null>;
-
-type PitchLayoutItem = {
-  slotId: string;
-  className: string;
-};
 
 const STARTER_SLOTS: Slot[] = [
   { id: 'lw', label: 'LW', role: 'LW', starter: true },
@@ -53,7 +50,7 @@ const ALL_SLOTS = [...STARTER_SLOTS, ...BENCH_SLOTS];
 const STARTER_SLOT_IDS = new Set(STARTER_SLOTS.map((slot) => slot.id));
 const SLOT_LABEL_BY_ID = Object.fromEntries(ALL_SLOTS.map((slot) => [slot.id, slot.label])) as Record<string, string>;
 
-const PITCH_LAYOUT: { slotId: string, style: React.CSSProperties }[] = [
+const PITCH_LAYOUT: { slotId: string, style: CSSProperties }[] = [
   { slotId: 'lw', style: { position: 'absolute', top: '12%', left: '14%', transform: 'translate(-50%, -50%)' } },
   { slotId: 'st', style: { position: 'absolute', top: '8%', left: '50%', transform: 'translate(-50%, -50%)' } },
   { slotId: 'rw', style: { position: 'absolute', top: '12%', right: '14%', transform: 'translate(50%, -50%)' } },
@@ -76,7 +73,7 @@ export default function PlayerSelection() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [positionOnly, setPositionOnly] = useState(true);
+  const [positionOnly, setPositionOnly] = useState(false);
   const [items, setItems] = useState<CatalogPlayer[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [appliedPositionFilter, setAppliedPositionFilter] = useState<string | null>(null);
@@ -85,7 +82,7 @@ export default function PlayerSelection() {
   const [saveError, setSaveError] = useState('');
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [formation, setFormation] = useState('4-3-3');
+  const [formation, setСхема] = useState('4-3-3');
   const [tacticalStyle, setTacticalStyle] = useState<TacticalStyle>('BALANCED');
 
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
@@ -138,7 +135,7 @@ export default function PlayerSelection() {
       return;
     }
 
-    setFormation(existing.team.formation || '4-3-3');
+    setСхема(existing.team.formation || '4-3-3');
     if (existing.team.tacticalStyle) {
       setTacticalStyle(existing.team.tacticalStyle);
     }
@@ -302,14 +299,14 @@ export default function PlayerSelection() {
           <button onClick={() => navigate('/squad-builder')} className="text-[#9CA3AF]">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="font-['Lexend'] text-xl text-[#4be277]">PLAYER SELECTION</h1>
+          <h1 className="font-['Lexend'] text-xl text-[#4be277]">ВЫБОР ИГРОКОВ</h1>
           <div className="text-xs text-[#9CA3AF]">{assignedCount}/11</div>
         </header>
 
         <section className="rounded-xl border border-[#3d4a3d] bg-[#1d2022] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Active Slot</h2>
-            <p className="text-xs text-[#9CA3AF]">Drag cards on field to swap. Click slot to pick player.</p>
+            <h2 className="font-semibold">Активный слот</h2>
+            <p className="text-xs text-[#9CA3AF]">Перетаскивай карточки на поле для обмена. Нажми слот, чтобы выбрать игрока.</p>
           </div>
 
           <div className="relative w-full aspect-[4/5] bg-[#0a1a12] rounded-lg border border-[#1a3a24] overflow-hidden">
@@ -421,10 +418,10 @@ export default function PlayerSelection() {
         <section className="rounded-xl border border-[#3d4a3d] bg-[#1d2022] p-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Formation</p>
+              <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Схема</p>
               <select
                 value={formation}
-                onChange={(e) => setFormation(e.target.value)}
+                onChange={(e) => setСхема(e.target.value)}
                 className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
               >
                 <option>4-3-3</option>
@@ -435,33 +432,33 @@ export default function PlayerSelection() {
               </select>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Tactical Preset</p>
+              <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Тактический пресет</p>
               <select
                 value={tacticalStyle}
                 onChange={(e) => setTacticalStyle(e.target.value as TacticalStyle)}
                 className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
               >
-                <option value="BALANCED">Balanced</option>
-                <option value="HIGH_PRESS">High Press</option>
-                <option value="COUNTER">Counter Attack</option>
-                <option value="LOW_BLOCK">Low Block</option>
-                <option value="POSSESSION">Possession</option>
+                <option value="BALANCED">Сбалансированный</option>
+                <option value="HIGH_PRESS">Высокий прессинг</option>
+                <option value="COUNTER">Контратаки</option>
+                <option value="LOW_BLOCK">Низкий блок</option>
+                <option value="POSSESSION">Контроль мяча</option>
               </select>
             </div>
           </div>
 
           <div className="rounded-xl border border-[#3d4a3d] bg-[#111827] p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#4be277] uppercase font-['Lexend']">Team Diagnostics</h3>
+              <h3 className="text-sm font-semibold text-[#4be277] uppercase font-['Lexend']">Диагностика команды</h3>
               {diagnostics && diagnostics.vulnerabilities.length > 0 && (
                 <span className="bg-[#ffb4ab]/20 text-[#ffb4ab] text-[10px] px-2 py-0.5 rounded border border-[#ffb4ab]/30">
-                  {diagnostics.vulnerabilities.length} Issues
+                  {diagnostics.vulnerabilities.length} проблем
                 </span>
               )}
             </div>
 
             {!diagnostics ? (
-              <p className="text-xs text-[#9CA3AF]">Fill starting XI to see diagnostics.</p>
+              <p className="text-xs text-[#9CA3AF]">Заполни стартовый состав, чтобы увидеть диагностику.</p>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -470,30 +467,30 @@ export default function PlayerSelection() {
                     <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.control}</p>
                   </div>
                   <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
-                    <p className="text-[10px] text-[#9CA3AF] uppercase">Chance Creation</p>
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Создание моментов</p>
                     <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.chanceCreation}</p>
                   </div>
                   <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
-                    <p className="text-[10px] text-[#9CA3AF] uppercase">Defensive Wall</p>
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Оборонительный блок</p>
                     <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.defensiveWall}</p>
                   </div>
                   <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
-                    <p className="text-[10px] text-[#9CA3AF] uppercase">Transition Def</p>
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Переходная оборона</p>
                     <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.transitionDefense}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
-                    <p className="text-[10px] text-[#9CA3AF] uppercase">Left Flank Risk</p>
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Риск левого фланга</p>
                     <p className={`text-sm font-bold ${diagnostics.flankSecurity.left < 50 ? 'text-[#ffb4ab]' : 'text-[#4be277]'}`}>
-                      {diagnostics.flankSecurity.left < 40 ? 'High' : diagnostics.flankSecurity.left < 60 ? 'Medium' : 'Low'} ({diagnostics.flankSecurity.left})
+                      {diagnostics.flankSecurity.left < 40 ? 'Высокий' : diagnostics.flankSecurity.left < 60 ? 'Средний' : 'Низкий'} ({diagnostics.flankSecurity.left})
                     </p>
                   </div>
                   <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
-                    <p className="text-[10px] text-[#9CA3AF] uppercase">Right Flank Risk</p>
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Риск правого фланга</p>
                     <p className={`text-sm font-bold ${diagnostics.flankSecurity.right < 50 ? 'text-[#ffb4ab]' : 'text-[#4be277]'}`}>
-                      {diagnostics.flankSecurity.right < 40 ? 'High' : diagnostics.flankSecurity.right < 60 ? 'Medium' : 'Low'} ({diagnostics.flankSecurity.right})
+                      {diagnostics.flankSecurity.right < 40 ? 'Высокий' : diagnostics.flankSecurity.right < 60 ? 'Средний' : 'Низкий'} ({diagnostics.flankSecurity.right})
                     </p>
                   </div>
                 </div>
@@ -508,7 +505,7 @@ export default function PlayerSelection() {
                           <p className="text-[#e0e3e5] text-xs">{vuln.message}</p>
                           {vuln.suggestedActions && vuln.suggestedActions.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-[#ffb4ab]/20">
-                              <p className="text-[10px] text-[#ffb4ab]/80 uppercase mb-1 font-semibold">Suggested Action</p>
+                              <p className="text-[10px] text-[#ffb4ab]/80 uppercase mb-1 font-semibold">Рекомендуемое действие</p>
                               <ul className="text-[11px] text-[#9CA3AF] list-disc list-inside">
                                 {vuln.suggestedActions.map((action: string, aidx: number) => (
                                   <li key={aidx}>{action}</li>
@@ -529,7 +526,7 @@ export default function PlayerSelection() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by player name..."
+              placeholder="Поиск по имени игрока..."
               className="flex-1 bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
             />
             <label className="text-xs flex items-center gap-2 text-[#9CA3AF]">
@@ -541,17 +538,17 @@ export default function PlayerSelection() {
                   setPage(1);
                 }}
               />
-              Position filter
+              Фильтр по позиции
             </label>
           </div>
 
           {error && <p className="text-sm text-[#ffb4ab]">{error}</p>}
 
           {pickerOpen ? (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
-              <div className="w-full max-w-4xl rounded-xl border border-[#3d4a3d] bg-[#0f172a] p-4 max-h-[80vh] overflow-y-auto">
+            <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
+              <div className="w-full max-w-4xl rounded-xl border border-[#3d4a3d] bg-[#0f172a] p-4 max-h-[88vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-['Lexend'] text-lg">Pick player for {selectedSlot?.label}</h3>
+                  <h3 className="font-['Lexend'] text-lg">Выбери игрока для {selectedSlot?.label}</h3>
                   <button onClick={() => setPickerOpen(false)} className="text-[#9CA3AF]">
                     <span className="material-symbols-outlined">close</span>
                   </button>
@@ -559,7 +556,7 @@ export default function PlayerSelection() {
 
                 {positionOnly && selectedSlot?.role && appliedPositionFilter && appliedPositionFilter !== selectedSlot.role ? (
                   <p className="text-xs text-[#9CA3AF] mb-3">
-                    No exact {selectedSlot.role} list in dataset. Showing closest position: {appliedPositionFilter}.
+                    Нет точного списка для {selectedSlot.role} в базе. Показываем ближайшую позицию: {appliedPositionFilter}.
                   </p>
                 ) : null}
 
@@ -567,7 +564,7 @@ export default function PlayerSelection() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search player..."
+                    placeholder="Поиск игрока..."
                     className="flex-1 rounded-lg border border-[#334155] bg-[#0b1220] px-3 py-2 text-sm outline-none focus:border-[#4be277]"
                   />
                   <label className="text-xs flex items-center gap-2 text-[#9CA3AF]">
@@ -579,11 +576,23 @@ export default function PlayerSelection() {
                         setPage(1);
                       }}
                     />
-                    Position filter
+                    Фильтр по позиции
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {loading ? (
+                  <div className="mb-3 rounded-lg border border-[#334155] bg-[#111827] p-3 text-sm text-[#9CA3AF]">
+                    Загружаю игроков...
+                  </div>
+                ) : null}
+
+                {error ? (
+                  <div className="mb-3 rounded-lg border border-[#7e3b3b] bg-[#381b1b] p-3 text-sm text-[#f8adad]">
+                    {error}
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((player) => {
                     const assignedSlotId = assignedByPlayerId.get(player.id);
                     const assignedElsewhere = Boolean(assignedSlotId && assignedSlotId !== selectedSlot?.id);
@@ -597,41 +606,20 @@ export default function PlayerSelection() {
                           }
                         }}
                         disabled={assignedElsewhere}
-                        className={`relative overflow-hidden rounded-xl border p-2 text-left transition ${
-                          assignedElsewhere
-                            ? 'border-[#475569] bg-[#090f1b] opacity-65 cursor-not-allowed'
-                            : 'border-[#1f2e4d] bg-gradient-to-b from-[#0d1b37] via-[#08142b] to-[#061026] hover:border-[#4be277] hover:shadow-[0_0_0_1px_rgba(75,226,119,0.3),0_12px_22px_rgba(4,20,44,0.55)]'
+                        className={`text-left transition ${
+                          assignedElsewhere ? 'cursor-not-allowed' : 'hover:scale-[1.01]'
                         }`}
                       >
-                        <div className="absolute -top-8 -right-6 h-20 w-20 rounded-full bg-[#4be2771a]" />
-                        <div className="relative flex items-start justify-between">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <PlayerPortrait name={player.name} faceUrl={player.faceUrl} />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-[#e5efff]">{player.name}</p>
-                              <p className="mt-0.5 text-[11px] text-[#8fa5c8]">{player.realPosition}</p>
-                            </div>
-                          </div>
-                          <div className="rounded-md border border-[#4be27766] bg-[#0d2c1d] px-2 py-0.5 text-sm font-bold text-[#4be277]">
-                            {player.rating}
-                          </div>
-                        </div>
-                        <p className="mt-2 text-[11px] text-[#9fb0cb]">
-                          {player.preferredFoot} foot • WR {player.attackWorkRate}/{player.defenseWorkRate}
-                        </p>
-                        <div className="mt-2 grid grid-cols-3 gap-1 text-[10px]">
-                          <StatChip label="PAC" value={player.pac} />
-                          <StatChip label="SHO" value={player.sho} />
-                          <StatChip label="PAS" value={player.pas} />
-                          <StatChip label="DRI" value={player.dri} />
-                          <StatChip label="DEF" value={player.def} />
-                          <StatChip label="PHY" value={player.phy} />
-                        </div>
-                        {assignedElsewhere ? (
-                          <p className="text-[11px] text-[#F59E0B] mt-2">
-                            Assigned to {SLOT_LABEL_BY_ID[assignedSlotId ?? ''] ?? assignedSlotId}
-                          </p>
-                        ) : null}
+                        <PlayerCard
+                          player={player}
+                          slotRole={selectedSlot?.role}
+                          disabled={assignedElsewhere}
+                          assignedLabel={
+                            assignedElsewhere
+                              ? `Назначен в ${SLOT_LABEL_BY_ID[assignedSlotId ?? ''] ?? assignedSlotId}`
+                              : undefined
+                          }
+                        />
                       </button>
                     );
                   })}
@@ -639,7 +627,7 @@ export default function PlayerSelection() {
 
                 {!loading && items.length === 0 ? (
                   <div className="mt-3 rounded-lg border border-[#334155] bg-[#111827] p-4">
-                    <p className="text-sm text-[#e0e3e5]">No players found for this filter.</p>
+                    <p className="text-sm text-[#e0e3e5]">По этому фильтру игроки не найдены.</p>
                     {positionOnly ? (
                       <button
                         type="button"
@@ -649,7 +637,7 @@ export default function PlayerSelection() {
                         }}
                         className="mt-3 rounded-lg border border-[#4be277] px-3 py-2 text-sm text-[#4be277] hover:bg-[#4be2771f]"
                       >
-                        Show all players
+                        Показать всех игроков
                       </button>
                     ) : null}
                   </div>
@@ -664,17 +652,17 @@ export default function PlayerSelection() {
               disabled={page <= 1 || loading}
               className="px-3 py-2 rounded-lg border border-[#3d4a3d] disabled:opacity-50"
             >
-              Prev
+              Назад
             </button>
             <p className="text-sm text-[#9CA3AF]">
-              Page {page} / {totalPages}
+              Страница {page} / {totalPages}
             </p>
             <button
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page >= totalPages || loading}
               className="px-3 py-2 rounded-lg border border-[#3d4a3d] disabled:opacity-50"
             >
-              Next
+              Вперед
             </button>
           </div>
         </section>
@@ -686,17 +674,17 @@ export default function PlayerSelection() {
             onClick={() => navigate('/player-profile')}
             className="w-full rounded-xl border border-[#3d4a3d] bg-[#111827] py-4 font-['Lexend'] text-[#e0e3e5] font-semibold uppercase"
           >
-            Open Player Profile
+            Открыть профиль игрока
           </button>
           <button
             onClick={onSave}
             className="w-full bg-[#4be277] text-[#003915] py-4 rounded-xl font-['Lexend'] font-semibold uppercase"
           >
-            Save Squad Selection
+            Сохранить выбор состава
           </button>
         </div>
       </main>
-      <MobileBottomNav active="squad" />
+      {!pickerOpen ? <MobileBottomNav active="squad" /> : null}
     </div>
   );
 }
@@ -738,7 +726,7 @@ function simulationPlayerToCatalogPlayer(player: {
   id: string;
   name: string;
   naturalPosition: string;
-  preferredPositions: string[];
+  preferredPositions?: string[];
   pac: number;
   sho: number;
   pas: number;
@@ -751,11 +739,22 @@ function simulationPlayerToCatalogPlayer(player: {
 }): CatalogPlayer {
   const rating = Math.round((player.pac + player.sho + player.pas + player.dri + player.def + player.phy) / 6);
   return {
+    displayName: player.name,
     id: player.id,
     name: player.name,
+    playerType: 'CURRENT',
+    primaryPosition: player.naturalPosition.toUpperCase(),
+    positions: (player.preferredPositions ?? [player.naturalPosition]).map((value) => value.toUpperCase()),
     fullName: player.name,
+    cardType: undefined,
+    rarity: undefined,
+    nationality: undefined,
+    heightCm: undefined,
     faceUrl: null,
-    age: null,
+    photoUrl: undefined,
+    hasPhoto: false,
+    tags: [],
+    age: undefined,
     realPosition: player.naturalPosition,
     preferredPositions: player.preferredPositions ?? [player.naturalPosition],
     rating,
@@ -780,11 +779,11 @@ function toPayloadPlayer(player: CatalogPlayer, rolePosition: string) {
     id: player.id,
     name: player.name,
     rating: player.rating,
-    naturalPosition: player.realPosition.toUpperCase(),
+    naturalPosition: player.primaryPosition.toUpperCase(),
     rolePosition: rolePosition.toUpperCase(),
-    preferredPositions: player.preferredPositions.length
-      ? player.preferredPositions.map((value) => value.toUpperCase())
-      : [player.realPosition.toUpperCase()],
+    preferredPositions: player.positions.length
+      ? player.positions.map((value) => value.toUpperCase())
+      : [player.primaryPosition.toUpperCase()],
     pac: player.pac,
     sho: player.sho,
     pas: player.pas,
@@ -815,109 +814,3 @@ function getCandidatePositions(role?: string): Array<string | null> {
   return [normalized, ...fallbacks];
 }
 
-function PlayerPortrait({ name, faceUrl }: { name: string; faceUrl?: string | null }) {
-  const initials = name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-
-  return (
-    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#345083] bg-[#091123]">
-      {faceUrl ? (
-        <img
-          src={faceUrl}
-          alt={name}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          onError={(event) => {
-            event.currentTarget.style.display = 'none';
-          }}
-        />
-      ) : null}
-      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-[#9cb2da]">
-        {initials || 'P'}
-      </div>
-    </div>
-  );
-}
-
-function StatChip({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded border border-[#21355f] bg-[#0a1831] px-1.5 py-1 text-center">
-      <span className="text-[#6f86b0]">{label}</span>{' '}
-      <span className="font-semibold text-[#d7e5ff]">{value}</span>
-    </div>
-  );
-}
-
-function SliderCompact({
-  label,
-  value,
-  setValue,
-}: {
-  label: string;
-  value: number;
-  setValue: (value: number) => void;
-}) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">{label}: {value}</p>
-      <input
-        type="range"
-        min={1}
-        max={100}
-        value={value}
-        onChange={(e) => setValue(Number(e.target.value))}
-        className="w-full h-1 bg-[#334155] rounded appearance-none accent-[#4be277]"
-      />
-    </div>
-  );
-}
-
-function FlankIndicator({
-  title,
-  attack,
-  defense,
-}: {
-  title: string;
-  attack: number;
-  defense: number;
-}) {
-  const defenseColor = defense < 52 ? '#EF4444' : '#22C55E';
-  const attackColor = attack > 68 ? '#A3E635' : '#22C55E';
-
-  return (
-    <div className="rounded-lg border border-[#334155] bg-[#111827] p-3">
-      <p className="text-xs text-[#9CA3AF] mb-2">{title}</p>
-      <div className="space-y-2">
-        <MetricBar label="Attack" value={attack} color={attackColor} />
-        <MetricBar label="Defense" value={defense} color={defenseColor} />
-      </div>
-    </div>
-  );
-}
-
-function MetricBar({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  const safe = Math.max(1, Math.min(99, value));
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-[#9CA3AF]">{label}</span>
-        <span>{safe}</span>
-      </div>
-      <div className="h-1 rounded bg-[#334155] overflow-hidden">
-        <div className="h-full" style={{ width: `${safe}%`, backgroundColor: color }} />
-      </div>
-    </div>
-  );
-}

@@ -8,8 +8,9 @@ import {
   tacticalStyleFromPreset,
 } from '../lib/squad';
 import { toApiError } from '../lib/api';
-import { fetchPlayers, type CatalogPlayer } from '../lib/players';
+import { calculatePositionFit, fetchPlayers, type CatalogPlayer } from '../lib/players';
 import { saveSquadSnapshot } from '../lib/savedSquads';
+import PlayerCard from '../components/PlayerCard';
 
 type Starter = {
   id: string;
@@ -20,14 +21,6 @@ type Starter = {
   badgeTextClass?: string;
   containerClass?: string;
   labelClass?: string;
-};
-
-type SubPlayer = {
-  id: string;
-  name: string;
-  rating: number;
-  image?: string;
-  ring?: 'primary' | 'outline';
 };
 
 const starters: Starter[] = [
@@ -119,44 +112,6 @@ const starters: Starter[] = [
   },
 ];
 
-const substitutes: SubPlayer[] = [
-  { id: 's1', name: 'N. Ortega', rating: 76, ring: 'outline' },
-  {
-    id: 's2',
-    name: 'L. Martinez',
-    rating: 84,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCaUk_grshqjMHyTNfSzkZPYyfNWvRoIZihbpElCPb7I6La29ssMD52EEByCC1U0ogy8kOg3o5Tx59zEIlzCdZ0I7a_QGsZYnMpRV7IH0meAucg9PtZyLAzP3f9KomyY1CczgYPeQgx7fy5YFQcYZYo4QGw5dwLEqWPWOH3VgEYR-jLWDoyWJMQbOLBMDq2hVnBJ3a2fuDkIc8LT1aHPninrX1_0q3ArK-ROvK5n2oqUEe8zEVMCCe57ddK7WUwrWKaVv4CzG4szWo',
-    ring: 'primary',
-  },
-  {
-    id: 's3',
-    name: 'F. Valverde',
-    rating: 85,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuC7pONj8LRjWKU24Ij9FNU1DO0bIiIT2EpNSwBnPWDPkcj5GM2au-SZgD9cLs6QpGHGFl53dSI7rhnT1wB-k3kkX-W4Jq8X65Npb99oRUdr_1-ClJ4rbNe3d_dmJG9yJoU4lBj8VStnw5xu7GkjYNsdWMoTnupDOa5N35rQc_W_m4VAvhdHE9fUneve0yWHTZHbVnvl8l4tCV2TcJnMic0ZfRYVHsKerh2ClYCfLDPuKze-8SBV0XyMwlHEMpBRotKRyoBDlgB1PiY',
-    ring: 'primary',
-  },
-  { id: 's4', name: 'R. Leao', rating: 82, ring: 'outline' },
-  {
-    id: 's5',
-    name: 'I. Williams',
-    rating: 81,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAGT5u0YvgCY04u2ekyce5Vyk3Cn7BeE89wuenCgaMj_dmV_k2doOMVQZDdA5o9xvLs0b5HUGFxqY3BDEkGPlHzMzj3j1dBsfBWnLyFAkgqnz4qPQngVkHHI7ucz0l4Y3GoxHoFJg-8OvwBim2iSpYz07-iCPFuZPey5Mjb3HRreCFoaUiNy-ErPyh4LRGG1J1_p1mbEzL7Fpd3Dv71WinEbeIMif-3jgFYwu1sD5fhrVJ9z4Bf_eZorxKM8bGO7hKrHiYIvJn7orA',
-    ring: 'outline',
-  },
-  { id: 's6', name: 'D. Nunez', rating: 80, ring: 'outline' },
-  {
-    id: 's7',
-    name: 'K. Thuram',
-    rating: 78,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCmG7ccfhyZmtVLqpH8hnlkWrf4PWXe7PBisZ1KNBIKAHskwsu85aS3Ao7E9aWt49hvA_Tf-mIgFNDpyaWn3vZD5zbcGhVefKVT3zYTn1DNBdqjH3q5cbBCa6oC82i6EEpZ29XsaCXBEuYNBIxw1gABcR9hCcMV7qW7KrWGi7vK5Sni4GZUSC6nI3GRuM4HVN4HGAH22fHvH--q5idiQkDPFFtHr8-58eWc9nwcEb1lb6S-PbxVVuW6ZXlJqwA6SP-wAJtLf0FKfQE',
-    ring: 'outline',
-  },
-];
-
 type TacticPreset = 'Balanced' | 'High Press' | 'Counter' | 'Possession';
 
 const SLOT_TO_ROLE: Record<string, string> = {
@@ -234,12 +189,24 @@ function simulationLikeToCatalog(player: {
 }): CatalogPlayer {
   const rating = Math.round((player.pac + player.sho + player.pas + player.dri + player.def + player.phy) / 6);
   return {
+    displayName: player.name,
     id: player.id,
     name: player.name,
+    playerType: 'CURRENT',
+    primaryPosition: player.naturalPosition.toUpperCase(),
+    positions: (player.preferredPositions ?? [player.naturalPosition]).map((value) => value.toUpperCase()),
     fullName: player.name,
-    age: null,
+    cardType: undefined,
+    rarity: undefined,
+    nationality: undefined,
+    age: undefined,
+    heightCm: undefined,
     realPosition: player.naturalPosition,
     preferredPositions: player.preferredPositions ?? [player.naturalPosition],
+    faceUrl: null,
+    photoUrl: undefined,
+    hasPhoto: false,
+    tags: [],
     rating,
     potential: rating,
     pac: player.pac,
@@ -249,8 +216,8 @@ function simulationLikeToCatalog(player: {
     def: player.def,
     phy: player.phy,
     stamina: player.stamina,
-    attackWorkRate: player.attackWorkRate,
-    defenseWorkRate: player.defenseWorkRate,
+    attackWorkRate: player.attackWorkRate ?? 'MEDIUM',
+    defenseWorkRate: player.defenseWorkRate ?? 'MEDIUM',
     preferredFoot: 'RIGHT',
     weakFoot: 3,
     skillMoves: 3,
@@ -301,6 +268,7 @@ export default function Dashboard() {
   const [formation, setFormation] = useState('4-3-3');
   const lineup = useMemo(() => selectLineup(catalogPlayers), [catalogPlayers]);
   const savedLineup = useMemo(() => readSavedLineup(), []);
+  const hasSavedLineup = savedLineup.starterBySlot.size >= 11;
   
   // Dynamic positioning based on formation
   const formationPositions: Record<string, Record<string, string>> = {
@@ -330,31 +298,28 @@ export default function Dashboard() {
     () =>
       starters.map((slot) => {
         const saved = savedLineup.starterBySlot.get(slot.id);
-        const player = saved ?? lineup.starterBySlot.get(slot.id);
-        if (!player) return { ...slot, containerClass: getPositionClass(slot.id) };
+        const player = saved;
+        if (!player) {
+          return {
+            ...slot,
+            name: SLOT_TO_ROLE[slot.id] ?? slot.id.toUpperCase(),
+            rating: 0,
+            image: undefined,
+            ring: 'outline' as const,
+            containerClass: getPositionClass(slot.id),
+            labelClass: 'text-[var(--color-on-surface-variant)]',
+          };
+        }
         return {
           ...slot,
           name: player.name,
           rating: player.rating,
+          image: player.faceUrl ?? undefined,
+          ring: 'primary' as const,
           containerClass: getPositionClass(slot.id)
         };
       }),
-    [lineup.starterBySlot, savedLineup.starterBySlot, formation],
-  );
-
-  const benchCards = useMemo(
-    () =>
-      substitutes.map((slot, idx) => {
-        const saved = savedLineup.bench[idx];
-        const player = saved ?? lineup.bench[idx];
-        if (!player) return slot;
-        return {
-          ...slot,
-          name: player.name,
-          rating: player.rating,
-        };
-      }),
-    [lineup.bench, savedLineup.bench],
+    [savedLineup.starterBySlot, formation],
   );
 
   const control = Math.round((tempo * 0.45 + width * 0.25 + 40) / 1.1);
@@ -362,7 +327,7 @@ export default function Dashboard() {
   const chanceCreation = Math.round((tempo * 0.4 + width * 0.35 + pressing * 0.25));
 
   return (
-    <AppShell title="SQUAD BUILDER" activeTab="squad">
+    <AppShell title="КОНСТРУКТОР СОСТАВА" activeTab="squad">
       <div className="px-5 space-y-6 pb-8 animate-slide-up pt-2">
         <section className="glass-panel-solid rounded-3xl p-5 overflow-hidden shadow-xl border border-white/10 relative">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[var(--color-primary)]/10 via-transparent to-transparent opacity-50 pointer-events-none" />
@@ -380,7 +345,7 @@ export default function Dashboard() {
             
             <div className="bg-[var(--color-surface-container-highest)] px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">OVR</span>
-              <span className="font-black text-white">{savedLineup.averageRating ?? lineup.averageRating}</span>
+              <span className="font-black text-white">{savedLineup.averageRating ?? '--'}</span>
             </div>
           </div>
 
@@ -396,10 +361,15 @@ export default function Dashboard() {
                 <div className={`relative ${player.id === 'st' || player.id === 'gk' ? 'w-14 h-14' : 'w-12 h-12'} hover:scale-110 transition-transform cursor-pointer`}>
                   <PlayerAvatar image={player.image} ring={player.ring ?? 'outline'} />
                   <div className={`absolute -bottom-1 -right-1 text-[10px] font-black px-1.5 py-0.5 rounded shadow-lg border border-[var(--color-surface)] ${badgeClass(player.ring ?? 'outline')}`}>
-                    {player.rating}
+                    {player.rating > 0 ? player.rating : '--'}
                   </div>
                 </div>
                 <span className={`text-[9px] uppercase tracking-wider font-bold mt-1.5 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm border border-white/10 ${player.labelClass ?? 'text-white'}`}>{player.name}</span>
+                {savedLineup.starterBySlot.get(player.id) ? (
+                  <span className="mt-1 rounded-full border border-[#2e8f56] bg-[#143724] px-1.5 py-0.5 text-[9px] font-semibold text-[#84e3a9]">
+                    Fit {calculatePositionFit(savedLineup.starterBySlot.get(player.id) as CatalogPlayer, SLOT_TO_ROLE[player.id] ?? player.id.toUpperCase())}%
+                  </span>
+                ) : null}
               </div>
             ))}
           </div>
@@ -407,27 +377,30 @@ export default function Dashboard() {
 
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-[var(--color-on-surface-variant)]">Substitutes</h3>
-            <button onClick={() => navigate('/player-selection')} className="text-[10px] text-[var(--color-primary)] uppercase tracking-wider font-bold bg-[var(--color-primary)]/10 px-2 py-1 rounded hover:bg-[var(--color-primary)]/20 transition-colors">Edit Squad</button>
+            <h3 className="text-xs uppercase tracking-widest font-bold text-[var(--color-on-surface-variant)]">Запасные</h3>
+            <button onClick={() => navigate('/player-selection')} className="text-[10px] text-[var(--color-primary)] uppercase tracking-wider font-bold bg-[var(--color-primary)]/10 px-2 py-1 rounded hover:bg-[var(--color-primary)]/20 transition-colors">Изменить Состав</button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 snap-x custom-scrollbar">
-            {benchCards.map((player) => (
-              <div key={player.id} className="snap-start flex-shrink-0 glass-panel p-2 rounded-xl flex flex-col items-center min-w-[70px] border border-white/5 active:scale-95 transition-transform cursor-pointer">
-                <div className="relative w-10 h-10 mb-1.5">
-                  <PlayerAvatar image={player.image} ring={player.ring ?? 'outline'} size="small" />
-                  <div className="absolute -bottom-1 -right-1 bg-black text-white text-[9px] font-black px-1 rounded shadow-md border border-[var(--color-surface)]">
-                    {player.rating}
-                  </div>
+            {Array.from({ length: 7 }).map((_, index) => {
+              const player = savedLineup.bench[index];
+              return (
+                <div key={`bench-${index + 1}`} className="snap-start min-w-[240px] flex-shrink-0">
+                  {player ? (
+                    <PlayerCard player={player} slotRole={player.primaryPosition} compact showTags={false} />
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-[var(--color-surface-container)] p-3 text-xs text-[var(--color-on-surface-variant)]">
+                      Пустой слот запаса
+                    </div>
+                  )}
                 </div>
-                <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--color-on-surface-variant)] text-center leading-tight truncate w-full px-1">{player.name}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
         <section className="glass-panel rounded-3xl p-5 shadow-lg">
           <p className="text-xs uppercase tracking-widest font-bold text-[var(--color-on-surface-variant)] mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">strategy</span> Tactical Approach
+            <span className="material-symbols-outlined text-sm">strategy</span> Тактический Подход
           </p>
 
           <div className="flex gap-2 mb-6 overflow-x-auto custom-scrollbar pb-2">
@@ -441,15 +414,15 @@ export default function Dashboard() {
                     : 'bg-[var(--color-surface-container-high)] border-white/5 text-[var(--color-on-surface-variant)] hover:bg-white/5'
                 }`}
               >
-                {item}
+                {item === 'Balanced' ? 'Сбалансированный' : item === 'High Press' ? 'Высокий Прессинг' : item === 'Counter' ? 'Контратаки' : 'Контроль Мяча'}
               </button>
             ))}
           </div>
 
           <div className="space-y-4 mb-6">
-            <RatingBar label="Control" value={control} />
-            <RatingBar label="Defensive Wall" value={defensiveWall} />
-            <RatingBar label="Chance Creation" value={chanceCreation} />
+            <RatingBar label="Контроль" value={control} />
+            <RatingBar label="Оборонительный блок" value={defensiveWall} />
+            <RatingBar label="Создание моментов" value={chanceCreation} />
           </div>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-6 pt-4 border-t border-white/5">
@@ -465,9 +438,9 @@ export default function Dashboard() {
             <span className="material-symbols-outlined text-[var(--color-warning)]">lightbulb</span>
           </div>
           <div>
-            <h4 className="font-bold text-white text-sm mb-1">Coach Insight</h4>
+            <h4 className="font-bold text-white text-sm mb-1">Подсказка Тренера</h4>
             <p className="text-xs text-[var(--color-on-surface-variant)] leading-relaxed">
-              Your defensive line is high. Consider a deeper line or more cover behind to avoid being caught on the counter with the <strong>{formation}</strong> formation.
+              Линия обороны поднята слишком высоко. Рассмотри более глубокий блок или дополнительную подстраховку, чтобы не попадать под контратаки при схеме <strong>{formation}</strong>.
             </p>
           </div>
         </section>
@@ -475,7 +448,7 @@ export default function Dashboard() {
         {(loadingPlayers || playersError) && (
           <section className="bg-[var(--color-surface-container)] border border-white/5 rounded-xl p-4 text-xs text-center">
             {loadingPlayers ? (
-              <p className="text-[var(--color-on-surface-variant)] animate-pulse">Syncing catalog data...</p>
+              <p className="text-[var(--color-on-surface-variant)] animate-pulse">Синхронизация каталога игроков...</p>
             ) : (
               <p className="text-[var(--color-danger)]">{playersError}</p>
             )}
@@ -485,6 +458,11 @@ export default function Dashboard() {
         <button
           onClick={() => {
             const existing = loadSquadPayload();
+            if (!existing || !hasSavedLineup) {
+              navigate('/player-selection');
+              return;
+            }
+
             const payloadToSave = existing
               ? { ...existing, team: { ...existing.team, formation, tacticalStyle: tacticalStyleFromPreset(preset) } }
               : buildSimulationPayloadFromStarters(lineup.startersForPayload, tacticalStyleFromPreset(preset), lineup.benchForPayload);
@@ -496,7 +474,7 @@ export default function Dashboard() {
           }}
           className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-fixed)] text-[var(--color-on-primary)] font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all neon-glow shadow-lg active:scale-[0.98] mt-4"
         >
-          CONFIRM TACTICS
+          {hasSavedLineup ? 'ПОДТВЕРДИТЬ ТАКТИКУ' : 'СНАЧАЛА ВЫБЕРИ ИГРОКОВ'}
           <span className="material-symbols-outlined">arrow_forward</span>
         </button>
       </div>
@@ -637,11 +615,11 @@ function toPayloadPlayer(player: CatalogPlayer, rolePosition: string) {
     id: player.id,
     name: player.name,
     rating: player.rating,
-    naturalPosition: player.realPosition.toUpperCase(),
+    naturalPosition: player.primaryPosition.toUpperCase(),
     rolePosition: rolePosition.toUpperCase(),
-    preferredPositions: player.preferredPositions.length
-      ? player.preferredPositions.map((value) => value.toUpperCase())
-      : [player.realPosition.toUpperCase()],
+    preferredPositions: player.positions.length
+      ? player.positions.map((value) => value.toUpperCase())
+      : [player.primaryPosition.toUpperCase()],
     pac: player.pac,
     sho: player.sho,
     pas: player.pas,

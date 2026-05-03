@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { toPlayerCardDto } from '../services/player-card.mapper';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
@@ -55,9 +56,14 @@ export const listPlayers = async (req: Request, res: Response): Promise<void> =>
         name: true,
         fullName: true,
         faceUrl: true,
+        nationality: true,
         age: true,
+        heightCm: true,
         realPosition: true,
         preferredPositions: true,
+        playerType: true,
+        cardType: true,
+        rarity: true,
         rating: true,
         potential: true,
         pac: true,
@@ -77,9 +83,10 @@ export const listPlayers = async (req: Request, res: Response): Promise<void> =>
 
     const countPromise = where ? prisma.player.count({ where }) : prisma.player.count();
     const [items, total] = await Promise.all([prisma.player.findMany(findArgs), countPromise]);
+    const cards = items.map((item) => toPlayerCardDto(item));
 
     res.status(200).json({
-      items,
+      items: cards,
       pagination: {
         page,
         limit,

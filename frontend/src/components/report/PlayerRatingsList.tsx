@@ -4,7 +4,7 @@ export default function PlayerRatingsList({ report }: { report: MatchFinalReport
   return (
     <section className="glass-panel rounded-2xl p-4">
       <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-sm">group</span> Player Ratings
+        <span className="material-symbols-outlined text-sm">group</span> Оценки игроков
       </p>
       
       <div className="space-y-2">
@@ -13,8 +13,8 @@ export default function PlayerRatingsList({ report }: { report: MatchFinalReport
             <div>
               <p className="text-sm font-bold">{entry.name} <span className="text-xs font-normal text-[var(--color-on-surface-variant)]">({entry.position})</span></p>
               <div className="flex gap-3 mt-0.5">
-                {entry.stats.goals > 0 && <span className="text-[10px] text-[var(--color-primary)] font-semibold">{entry.stats.goals} Goals</span>}
-                {entry.stats.assists > 0 && <span className="text-[10px] text-[var(--color-blue-accent)] font-semibold">{entry.stats.assists} Assists</span>}
+                {entry.stats.goals > 0 && <span className="text-[10px] text-[var(--color-primary)] font-semibold">{entry.stats.goals} гол(а)</span>}
+                {entry.stats.assists > 0 && <span className="text-[10px] text-[var(--color-blue-accent)] font-semibold">{entry.stats.assists} ассист(а)</span>}
                 {entry.ratingReasons.length > 0 && <span className="text-[10px] text-[var(--color-on-surface-variant)] italic">{entry.ratingReasons[0]}</span>}
               </div>
             </div>

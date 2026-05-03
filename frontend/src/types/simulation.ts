@@ -74,6 +74,7 @@ export type TacticalRuleEffect = {
 export type PlayerInput = {
   id: string;
   name: string;
+  rating?: number;
   naturalPosition: string;
   rolePosition: string;
   preferredPositions?: string[];
@@ -150,6 +151,11 @@ export type SimulationInput = {
   realismFactor?: number; // 0.0 to 1.0, default 0.85 (85% logic, 15% noise)
 };
 
+// Compatibility aliases for legacy frontend modules
+export type SimulationPlayer = PlayerInput;
+export type SimulationTeam = TeamInput;
+export type SimulationPayload = SimulationInput;
+
 export type SimulationCalibration = {
   attackFrequencyMultiplier: number;
   goalProbabilityMultiplier: number;
@@ -175,6 +181,9 @@ export type SimulationResult = {
   insights: MidMatchInsight[];
   events: MatchEvent[];
 };
+
+// Compatibility alias for local history helpers
+export type SimulationResponse = SimulationResult;
 
 export type MatchStatus = 'PRE_MATCH' | 'PAUSED_FOR_COACH' | 'FINISHED';
 
@@ -233,6 +242,8 @@ export type MatchStartResponse = MatchStateSnapshot & {
   suggestedActions: SubstitutionAction[];
 };
 
+export type StartMatchResponse = MatchStartResponse;
+
 export type TacticalImpactPreview = {
   before: TeamVectors;
   after: TeamVectors;
@@ -253,6 +264,8 @@ export type MatchSubstitutionResponse = {
   impactPreview: TacticalImpactPreview;
   team: TeamInput;
 };
+
+export type SubstitutionResponse = MatchSubstitutionResponse;
 
 export type PlayerMatchRating = {
   playerId: string;
@@ -313,6 +326,8 @@ export type MatchResumeResponse = {
   status: MatchStatus;
   report: MatchFinalReport;
 };
+
+export type ResumeMatchResponse = MatchResumeResponse;
 
 export type MatchPausedStateResponse = {
   matchId: string;

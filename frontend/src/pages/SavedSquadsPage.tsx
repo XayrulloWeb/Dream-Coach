@@ -10,7 +10,7 @@ import type { SimulationPayload } from '../types/simulation';
 export default function SavedSquadsPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<SavedSquadRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setЗагрузитьing] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -18,7 +18,7 @@ export default function SavedSquadsPage() {
     let active = true;
 
     const load = async () => {
-      setLoading(true);
+      setЗагрузитьing(true);
       setError('');
 
       try {
@@ -48,7 +48,7 @@ export default function SavedSquadsPage() {
         setError(toApiError(reason).message);
       } finally {
         if (active) {
-          setLoading(false);
+          setЗагрузитьing(false);
         }
       }
     };
@@ -62,21 +62,21 @@ export default function SavedSquadsPage() {
 
   const total = useMemo(() => items.length, [items]);
 
-  const onDelete = async (id: string) => {
+  const onУдалить = async (id: string) => {
     setMessage('');
 
     try {
       await removeSavedSquad(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
-      setMessage('Saved squad deleted.');
+      setMessage('Состав удален.');
     } catch (reason) {
       setMessage(toApiError(reason).message);
     }
   };
 
-  const onLoad = (payload: SimulationPayload, name: string) => {
+  const onЗагрузить = (payload: SimulationPayload, name: string) => {
     saveSquadPayload(payload);
-    setMessage(`Loaded: ${name}`);
+    setMessage(`Загрузитьed: ${name}`);
     navigate('/squad-builder');
   };
 
@@ -87,13 +87,13 @@ export default function SavedSquadsPage() {
           <button onClick={() => navigate('/dashboard')} className="text-slate-300">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">SAVED SQUADS</h1>
+          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">СОХРАНЕННЫЕ СОСТАВЫ</h1>
           <span className="text-xs text-slate-400">{total}</span>
         </header>
 
         {loading ? (
           <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
-            <p className="text-sm text-slate-400">Loading squads...</p>
+            <p className="text-sm text-slate-400">Загрузка составов...</p>
           </section>
         ) : items.length ? (
           <section className="space-y-2">
@@ -108,16 +108,16 @@ export default function SavedSquadsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onLoad(squad.payload, squad.name)}
+                      onClick={() => onЗагрузить(squad.payload, squad.name)}
                       className="rounded-md border border-emerald-500/70 px-3 py-1 text-xs text-emerald-300"
                     >
-                      Load
+                      Загрузить
                     </button>
                     <button
-                      onClick={() => void onDelete(squad.id)}
+                      onClick={() => void onУдалить(squad.id)}
                       className="rounded-md border border-rose-500/60 px-3 py-1 text-xs text-rose-300"
                     >
-                      Delete
+                      Удалить
                     </button>
                   </div>
                 </div>
@@ -126,11 +126,11 @@ export default function SavedSquadsPage() {
           </section>
         ) : (
           <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
-            <p className="text-sm text-slate-400">No saved squads yet.</p>
+            <p className="text-sm text-slate-400">Пока нет сохраненных составов.</p>
           </section>
         )}
 
-        {error ? <p className="text-xs text-amber-300">API warning: {error}</p> : null}
+        {error ? <p className="text-xs text-amber-300">Предупреждение API: {error}</p> : null}
         {message ? <p className="text-xs text-emerald-300">{message}</p> : null}
       </main>
 
@@ -138,3 +138,4 @@ export default function SavedSquadsPage() {
     </div>
   );
 }
+

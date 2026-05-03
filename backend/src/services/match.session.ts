@@ -189,7 +189,7 @@ export async function resumeStatefulMatch(matchId: string): Promise<MatchResumeR
   session.status = 'FINISHED';
   session.minute = 90;
 
-  const report = buildFinalReport(session);
+  const report = await buildFinalReport(session);
 
   await persistSafely(() => persistMatchFinal(matchId, report));
   sessions.delete(matchId);
@@ -249,7 +249,7 @@ function buildPauseSnapshot(session: MatchSession): MatchStateSnapshot {
   };
 }
 
-function buildFinalReport(session: MatchSession): MatchFinalReport {
+async function buildFinalReport(session: MatchSession): Promise<MatchFinalReport> {
   const effectiveSimulation = session.hasSubstitutions
     ? mergeSimulationsAtPause(session.pauseSnapshot, session.simulation, session.pauseMinute)
     : session.simulation;
@@ -266,7 +266,7 @@ function buildFinalReport(session: MatchSession): MatchFinalReport {
   } : null;
 
   const { explainMatchReport } = require('./explainer.service');
-  const explainerData = explainMatchReport(effectiveSimulation, mvp, session.hasSubstitutions, session.team);
+  const explainerData = await explainMatchReport(effectiveSimulation, mvp, session.hasSubstitutions, session.team);
 
   if (mvp) {
     // Delete stats so it conforms strictly to the type

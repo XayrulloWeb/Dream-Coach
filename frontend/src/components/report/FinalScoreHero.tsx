@@ -1,4 +1,4 @@
-import type { MatchFinalReport } from '../../types/simulation';
+﻿import type { MatchFinalReport } from '../../types/simulation';
 
 export default function FinalScoreHero({ report }: { report: MatchFinalReport }) {
   const isWin = report.score.home > report.score.away;
@@ -12,14 +12,14 @@ export default function FinalScoreHero({ report }: { report: MatchFinalReport })
       
       <div className="text-center mb-4 relative z-10">
         <span className={`px-3 py-1 rounded-full border text-[10px] font-bold tracking-widest uppercase transition-colors bg-black/30 backdrop-blur-md ${resultColor} border-current`}>
-          {isWin ? 'VICTORY' : isDraw ? 'DRAW' : 'DEFEAT'}
+          {isWin ? 'ПОБЕДА' : isDraw ? 'НИЧЬЯ' : 'ПОРАЖЕНИЕ'}
         </span>
       </div>
 
       <div className="flex items-center justify-between relative z-10">
         <div className="text-center flex-1">
           <p className="font-bold text-[var(--color-primary)] text-sm sm:text-base">Dream FC</p>
-          <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase mt-0.5 font-semibold">Home</p>
+          <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase mt-0.5 font-semibold">Дома</p>
         </div>
         
         <div className="flex items-center gap-4 px-4">
@@ -29,10 +29,11 @@ export default function FinalScoreHero({ report }: { report: MatchFinalReport })
         </div>
 
         <div className="text-center flex-1">
-          <p className="font-bold text-[var(--color-blue-accent)] text-sm sm:text-base">Rival</p>
-          <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase mt-0.5 font-semibold">Away</p>
+          <p className="font-bold text-[var(--color-blue-accent)] text-sm sm:text-base">Соперник</p>
+          <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase mt-0.5 font-semibold">В гостях</p>
         </div>
       </div>
     </section>
   );
 }
+
