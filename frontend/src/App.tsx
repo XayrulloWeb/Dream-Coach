@@ -1,5 +1,6 @@
-﻿import type { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +9,14 @@ import LiveMatch from './pages/LiveMatch';
 import Home from './pages/Home';
 import MatchReport from './pages/MatchReport';
 import PlayerSelection from './pages/PlayerSelection';
+import PlayerProfile from './pages/PlayerProfile';
+import MatchSetup from './pages/MatchSetup';
+import MatchAnalysis from './pages/MatchAnalysis';
+import MatchHistory from './pages/MatchHistory';
+import ComingSoon from './pages/ComingSoon';
+import SavedSquadsPage from './pages/SavedSquadsPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import { hasCompletedOnboarding } from './lib/onboarding';
 
 function AppGate() {
@@ -53,6 +62,7 @@ function PublicAuthRoute({ children }: { children: ReactNode }) {
 
 function App() {
   return (
+    <ErrorBoundary>
     <Router>
       <Routes>
         <Route path="/" element={<AppGate />} />
@@ -98,6 +108,22 @@ function App() {
           )}
         />
         <Route
+          path="/player-profile"
+          element={(
+            <PrivateRoute>
+              <PlayerProfile />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/match-setup"
+          element={(
+            <PrivateRoute>
+              <MatchSetup />
+            </PrivateRoute>
+          )}
+        />
+        <Route
           path="/live-match"
           element={(
             <PrivateRoute>
@@ -113,9 +139,82 @@ function App() {
             </PrivateRoute>
           )}
         />
+        <Route
+          path="/match-analysis"
+          element={(
+            <PrivateRoute>
+              <MatchAnalysis />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/match-history"
+          element={(
+            <PrivateRoute>
+              <MatchHistory />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/community-challenges"
+          element={(
+            <PrivateRoute>
+              <ComingSoon />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/saved-squads"
+          element={(
+            <PrivateRoute>
+              <SavedSquadsPage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/profile"
+          element={(
+            <PrivateRoute>
+              <ProfilePage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/settings"
+          element={(
+            <PrivateRoute>
+              <SettingsPage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/notifications"
+          element={(
+            <PrivateRoute>
+              <ComingSoon />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/tournament"
+          element={(
+            <PrivateRoute>
+              <ComingSoon />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/pro-subscription"
+          element={(
+            <PrivateRoute>
+              <ComingSoon />
+            </PrivateRoute>
+          )}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </ErrorBoundary>
   );
 }
 

@@ -1,5 +1,13 @@
 ﻿# Football Dream Coach - Product & MVP Spec (v1)
 
+## Execution Docs (Current)
+- `docs/MVP_V1_EXECUTION_SPEC.md`
+- `docs/API_CONTRACT_V1.md`
+- `docs/SIMULATION_ENGINE_V1.md`
+- `docs/SPRINT_BOARD_V1.md`
+- `docs/openapi-v1.yaml`
+
+
 ## 1) Product Positioning
 AI-powered football coach simulator where fans build dream squads, make tactical decisions, simulate realistic matches, and challenge friends.
 

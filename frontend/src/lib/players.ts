@@ -4,6 +4,7 @@ export type CatalogPlayer = {
   id: string;
   name: string;
   fullName?: string | null;
+  faceUrl?: string | null;
   age?: number | null;
   realPosition: string;
   preferredPositions: string[];

@@ -35,6 +35,11 @@ enum DatasetImportStatus {
   FAILED
 }
 
+enum ChallengeRunStatus {
+  COMPLETED
+  FAILED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -52,6 +57,7 @@ model Player {
   sourceDataset      String?
   name               String
   fullName           String?
+  faceUrl            String?
   age                Int?
   realPosition       String
   preferredPositions String[]      @default([])
@@ -234,4 +240,94 @@ model DatasetImportRun {
   finishedAt    DateTime?
 
   @@index([datasetType, status])
+}
+
+model SavedSquadRecord {
+  id            String   @id @default(uuid())
+  ownerId       String
+  name          String
+  formation     String
+  tacticalStyle String
+  averageRating Int
+  payload       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String
+  difficulty  String
+  isActive    Boolean  @default(true)
+  isDaily     Boolean  @default(false)
+  rules       Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs ChallengeRun[]
+
+  @@index([isActive, isDaily])
+}
+
+model ChallengeRun {
+  id          String             @id @default(uuid())
+  ownerId     String
+  challengeId String
+  status      ChallengeRunStatus
+  score       Int?
+  payload     Json?
+  createdAt   DateTime           @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+
+  @@index([ownerId, createdAt])
+  @@index([challengeId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  ownerId   String
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  payload   Json?
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  @@index([ownerId, isRead, createdAt])
+}
+
+model TournamentProgress {
+  id           String   @id @default(uuid())
+  ownerId      String   @unique
+  seasonNumber Int      @default(1)
+  played       Int      @default(0)
+  wins         Int      @default(0)
+  draws        Int      @default(0)
+  losses       Int      @default(0)
+  goalsFor     Int      @default(0)
+  goalsAgainst Int      @default(0)
+  points       Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TournamentMatch {
+  id           String   @id @default(uuid())
+  ownerId      String
+  seasonNumber Int
+  round        Int
+  opponentName String
+  homeScore    Int?
+  awayScore    Int?
+  result       String?
+  createdAt    DateTime @default(now())
+  playedAt     DateTime?
+
+  @@index([ownerId, seasonNumber, round])
 }

@@ -82,6 +82,39 @@ export async function startStatefulMatch(input: SimulationInput): Promise<MatchS
   return result;
 }
 
+export function previewStatefulSubstitutions(
+  matchId: string,
+  substitutions: SubstitutionAction[],
+  tacticalStyle?: TacticalStyle,
+) {
+  const session = sessions.get(matchId);
+  if (!session) {
+    throw new Error('Match session not found');
+  }
+
+  const beforeTeam = cloneTeam(session.team);
+  const nextTeam = applySubstitutions(beforeTeam, substitutions);
+  if (tacticalStyle) {
+    nextTeam.tacticalStyle = tacticalStyle;
+  }
+
+  const before = calculateTeamVectors(beforeTeam);
+  const after = calculateTeamVectors(nextTeam);
+
+  return {
+    before,
+    after,
+    deltas: {
+      controlDelta: round(after.control - before.control),
+      chanceCreationDelta: round(after.chanceCreation - before.chanceCreation),
+      defenseDelta: round(after.defensiveWall - before.defensiveWall),
+      leftRiskDelta: round(after.leftFlankRisk - before.leftFlankRisk),
+      rightRiskDelta: round(after.rightFlankRisk - before.rightFlankRisk),
+      pressingDelta: round(after.pressingPower - before.pressingPower),
+    },
+  };
+}
+
 export async function applyStatefulSubstitutions(
   matchId: string,
   substitutions: SubstitutionAction[],
@@ -224,7 +257,21 @@ function buildFinalReport(session: MatchSession): MatchFinalReport {
   const goals = buildGoalSummary(effectiveSimulation.events);
   const playerRatings = buildPlayerRatings(session.team, session.opponent, effectiveSimulation.events);
 
-  const mvp = playerRatings[0] ?? null;
+  let mvp: any = playerRatings.length > 0 ? {
+    playerId: playerRatings[0]!.playerId,
+    name: playerRatings[0]!.name,
+    rating: playerRatings[0]!.rating,
+    reason: '',
+    stats: playerRatings[0]!.stats,
+  } : null;
+
+  const { explainMatchReport } = require('./explainer.service');
+  const explainerData = explainMatchReport(effectiveSimulation, mvp, session.hasSubstitutions, session.team);
+
+  if (mvp) {
+    // Delete stats so it conforms strictly to the type
+    delete mvp.stats;
+  }
 
   return {
     ...effectiveSimulation,
@@ -232,6 +279,8 @@ function buildFinalReport(session: MatchSession): MatchFinalReport {
     goals,
     playerRatings,
     mvp,
+    tacticalSummary: explainerData.tacticalSummary,
+    coachCard: explainerData.coachCard,
   };
 }
 
@@ -625,14 +674,16 @@ function buildPlayerRatings(homeTeam: TeamInput, awayTeam: TeamInput, events: Ma
     const scorerEntry = findByName(ratings, goal.scorer, goal.team);
     if (scorerEntry) {
       scorerEntry.rating += 0.7;
-      scorerEntry.goals += 1;
+      scorerEntry.stats.goals += 1;
+      scorerEntry.ratingReasons.push('Scored a goal');
     }
 
     if (goal.assist) {
       const assistEntry = findByName(ratings, goal.assist, goal.team);
       if (assistEntry) {
         assistEntry.rating += 0.4;
-        assistEntry.assists += 1;
+        assistEntry.stats.assists += 1;
+        assistEntry.ratingReasons.push('Provided an assist');
       }
     }
   }
@@ -649,14 +700,17 @@ function buildPlayerRatings(homeTeam: TeamInput, awayTeam: TeamInput, events: Ma
 
     if (event.type === 'SHOT' && event.message.includes('forced a save')) {
       entry.rating += 0.15;
+      entry.stats.shots += 1;
     }
 
     if (event.type === 'SHOT' && event.message.includes('missed')) {
       entry.rating -= 0.08;
+      entry.stats.shots += 1;
     }
 
     if (event.type === 'CARD') {
-      entry.rating -= 0.3;
+      entry.rating -= 0.15;
+      entry.ratingReasons.push('Received a card');
     }
 
     if (event.type === 'INJURY') {
@@ -683,17 +737,32 @@ function addTeamRatingEntries(
     let rating = 6.5;
     rating -= positionFitPenalty(player);
 
+    let ratingReasons: string[] = [];
+    if (positionFitPenalty(player) > 0) {
+      ratingReasons.push('Played out of preferred position');
+    }
+
     if (estimateStamina(player, 90, team.tacticalStyle) < 35) {
       rating -= 0.2;
+      ratingReasons.push('Stamina collapsed late game');
     }
 
     map.set(`${side}:${player.id}`, {
       playerId: player.id,
-      playerName: player.name,
-      team: side,
+      name: player.name,
+      position: player.rolePosition,
       rating,
-      goals: 0,
-      assists: 0,
+      minutesPlayed: 90, // simplify for now
+      stats: {
+        goals: 0,
+        assists: 0,
+        shots: 0,
+        keyPasses: 0,
+        tackles: 0,
+        interceptions: 0,
+        saves: 0,
+      },
+      ratingReasons,
     });
   }
 }
@@ -703,8 +772,8 @@ function findByName(
   playerName: string,
   side: 'HOME' | 'AWAY',
 ): PlayerMatchRating | undefined {
-  for (const entry of ratings.values()) {
-    if (entry.team === side && entry.playerName === playerName) {
+  for (const [key, entry] of ratings.entries()) {
+    if (key.startsWith(side + ':') && entry.name === playerName) {
       return entry;
     }
   }

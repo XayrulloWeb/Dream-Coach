@@ -1,10 +1,14 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import authRoutes from './routes/auth.routes';
 import matchRoutes from './routes/match.routes';
 import playerRoutes from './routes/player.routes';
+import squadRoutes from './routes/squad.routes';
+import challengeRoutes from './routes/challenge.routes';
+import notificationRoutes from './routes/notification.routes';
+import tournamentRoutes from './routes/tournament.routes';
 
 const app = express();
 app.use(cors());
@@ -26,8 +30,12 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/match', matchRoutes);
+app.use('/api/matches', matchRoutes);
 app.use('/api/players', playerRoutes);
+app.use('/api/squads', squadRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/tournament', tournamentRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({

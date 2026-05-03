@@ -1,0 +1,810 @@
+﻿openapi: 3.1.0
+info:
+  title: Dream Coach API
+  version: 1.0.0
+  description: |
+    API contract aligned to current MVP backend implementation.
+servers:
+  - url: /api
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          $ref: '#/components/responses/AuthValidationError'
+        '409':
+          $ref: '#/components/responses/AuthUserExistsError'
+        '503':
+          $ref: '#/components/responses/AuthServerUnavailableError'
+
+  /auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          $ref: '#/components/responses/AuthValidationError'
+        '401':
+          $ref: '#/components/responses/AuthInvalidCredentialsError'
+        '503':
+          $ref: '#/components/responses/AuthServerUnavailableError'
+
+  /auth/guest:
+    post:
+      summary: Create guest session
+      responses:
+        '200':
+          description: Guest token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestAuthResponse'
+
+  /players:
+    get:
+      summary: List players
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: position
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 24
+      responses:
+        '200':
+          description: Player page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerListResponse'
+        '503':
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /match/simulate:
+    post:
+      summary: Stateless simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationInput'
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+        '400':
+          $ref: '#/components/responses/SimValidationError'
+
+  /match/start:
+    post:
+      summary: Start stateful match and pause at coach intervention minute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationInput'
+      responses:
+        '200':
+          description: Pause state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchStartResponse'
+        '400':
+          $ref: '#/components/responses/SimValidationError'
+
+  /match/{matchId}/substitutions:
+    post:
+      summary: Apply substitutions during pause
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstitutionRequest'
+      responses:
+        '200':
+          description: Tactical impact preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchSubstitutionResponse'
+        '400':
+          $ref: '#/components/responses/SimValidationError'
+        '404':
+          $ref: '#/components/responses/SimValidationError'
+
+  /match/{matchId}/resume:
+    post:
+      summary: Resume from pause to full time
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Final report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResumeResponse'
+        '400':
+          $ref: '#/components/responses/SimValidationError'
+        '404':
+          $ref: '#/components/responses/SimValidationError'
+
+  /match/{matchId}/state:
+    get:
+      summary: Read current match state (paused or finished)
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Match state
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MatchPausedStateResponse'
+                  - $ref: '#/components/schemas/MatchFinishedStateResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  responses:
+    AuthValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthUserExistsError:
+      description: User exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthInvalidCredentialsError:
+      description: Invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthServerUnavailableError:
+      description: Auth service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    SimValidationError:
+      description: Simulation validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        time:
+          type: string
+          format: date-time
+      required: [status, service, time]
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required: [username, email, password]
+
+    LoginRequest:
+      type: object
+      properties:
+        emailOrUsername:
+          type: string
+        password:
+          type: string
+      required: [emailOrUsername, password]
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+      required: [id, username, email]
+
+    GuestUser:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          nullable: true
+          type: string
+        isGuest:
+          type: boolean
+      required: [id, username, email, isGuest]
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/AuthUser'
+      required: [token, user]
+
+    GuestAuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/GuestUser'
+      required: [token, user]
+
+    WorkRate:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+
+    TacticalStyle:
+      type: string
+      enum: [BALANCED, HIGH_PRESS, COUNTER, POSSESSION, LOW_BLOCK]
+
+    Zone:
+      type: string
+      enum: [left, center, right]
+
+    CatalogPlayer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        fullName: { type: [string, 'null'] }
+        faceUrl: { type: [string, 'null'] }
+        age: { type: [integer, 'null'] }
+        realPosition: { type: string }
+        preferredPositions:
+          type: array
+          items: { type: string }
+        rating: { type: integer }
+        potential: { type: [integer, 'null'] }
+        pac: { type: integer }
+        sho: { type: integer }
+        pas: { type: integer }
+        dri: { type: integer }
+        def: { type: integer }
+        phy: { type: integer }
+        stamina: { type: integer }
+        attackWorkRate:
+          $ref: '#/components/schemas/WorkRate'
+        defenseWorkRate:
+          $ref: '#/components/schemas/WorkRate'
+        preferredFoot:
+          type: string
+          enum: [LEFT, RIGHT]
+        weakFoot: { type: integer }
+        skillMoves: { type: integer }
+      required:
+        - id
+        - name
+        - realPosition
+        - preferredPositions
+        - rating
+        - pac
+        - sho
+        - pas
+        - dri
+        - def
+        - phy
+        - stamina
+        - attackWorkRate
+        - defenseWorkRate
+        - preferredFoot
+        - weakFoot
+        - skillMoves
+
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+      required: [page, limit, total, totalPages]
+
+    PlayerListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogPlayer'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required: [items, pagination]
+
+    PlayerInput:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        naturalPosition: { type: string }
+        rolePosition: { type: string }
+        preferredPositions:
+          type: array
+          items: { type: string }
+        isSubstitute: { type: boolean }
+        pac: { type: integer }
+        sho: { type: integer }
+        pas: { type: integer }
+        dri: { type: integer }
+        def: { type: integer }
+        phy: { type: integer }
+        stamina: { type: integer }
+        attackWorkRate:
+          $ref: '#/components/schemas/WorkRate'
+        defenseWorkRate:
+          $ref: '#/components/schemas/WorkRate'
+      required:
+        - id
+        - name
+        - naturalPosition
+        - rolePosition
+        - pac
+        - sho
+        - pas
+        - dri
+        - def
+        - phy
+        - stamina
+        - attackWorkRate
+        - defenseWorkRate
+
+    TeamInput:
+      type: object
+      properties:
+        name: { type: string }
+        formation: { type: string }
+        tacticalStyle:
+          $ref: '#/components/schemas/TacticalStyle'
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerInput'
+      required: [name, formation, tacticalStyle, players]
+
+    SimulationInput:
+      type: object
+      properties:
+        team:
+          $ref: '#/components/schemas/TeamInput'
+        opponent:
+          $ref: '#/components/schemas/TeamInput'
+        venue:
+          type: string
+          enum: [HOME, AWAY, NEUTRAL]
+      required: [team]
+
+    TeamMatchStats:
+      type: object
+      properties:
+        possession: { type: integer }
+        shots: { type: integer }
+        shotsOnTarget: { type: integer }
+        xg: { type: number }
+        bigChances: { type: integer }
+      required: [possession, shots, shotsOnTarget, xg, bigChances]
+
+    TeamRatings:
+      type: object
+      properties:
+        control: { type: integer }
+        chanceCreation: { type: integer }
+        defensiveWall: { type: integer }
+        transitionDefense: { type: integer }
+        pressingPower: { type: integer }
+        flankSecurity:
+          type: object
+          properties:
+            left: { type: integer }
+            center: { type: integer }
+            right: { type: integer }
+          required: [left, center, right]
+        attackingThreat:
+          type: object
+          properties:
+            left: { type: integer }
+            center: { type: integer }
+            right: { type: integer }
+          required: [left, center, right]
+        vulnerabilities:
+          type: array
+          items: { type: string }
+      required:
+        - control
+        - chanceCreation
+        - defensiveWall
+        - transitionDefense
+        - pressingPower
+        - flankSecurity
+        - attackingThreat
+        - vulnerabilities
+
+    MatchIssue:
+      type: object
+      properties:
+        type: { type: string }
+        severity: { type: string }
+        player: { type: string }
+        zone:
+          type: string
+        message: { type: string }
+        suggestedActions:
+          type: array
+          items: { type: string }
+      required: [type, severity, message, suggestedActions]
+
+    ExplainableIssue:
+      allOf:
+        - $ref: '#/components/schemas/MatchIssue'
+        - type: object
+          properties:
+            evidence:
+              type: object
+              additionalProperties: true
+
+    MatchEvent:
+      type: object
+      properties:
+        minute: { type: integer }
+        team:
+          type: string
+          enum: [HOME, AWAY, SYSTEM]
+        type:
+          type: string
+          enum: [GOAL, SHOT, CARD, INJURY, TACTICAL_WARNING, INSIGHT]
+        message: { type: string }
+        zone:
+          $ref: '#/components/schemas/Zone'
+        player: { type: string }
+      required: [minute, team, type, message]
+
+    ExplainableInsight:
+      type: object
+      properties:
+        minute: { type: integer }
+        score: { type: string }
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplainableIssue'
+      required: [minute, score, issues]
+
+    SimulationResult:
+      type: object
+      properties:
+        score:
+          type: object
+          properties:
+            home: { type: integer }
+            away: { type: integer }
+          required: [home, away]
+        stats:
+          type: object
+          properties:
+            home:
+              $ref: '#/components/schemas/TeamMatchStats'
+            away:
+              $ref: '#/components/schemas/TeamMatchStats'
+          required: [home, away]
+        ratings:
+          type: object
+          properties:
+            home:
+              $ref: '#/components/schemas/TeamRatings'
+            away:
+              $ref: '#/components/schemas/TeamRatings'
+          required: [home, away]
+        insights:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplainableInsight'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchEvent'
+      required: [score, stats, ratings, insights, events]
+
+    SubstitutionAction:
+      type: object
+      properties:
+        playerOutId: { type: string }
+        playerInId: { type: string }
+        newRolePosition: { type: string }
+      required: [playerOutId, playerInId]
+
+    MatchStateSnapshot:
+      type: object
+      properties:
+        matchId: { type: string }
+        minute: { type: integer }
+        status:
+          type: string
+          enum: [PAUSED_FOR_COACH, FINISHED]
+        score:
+          type: object
+          properties:
+            home: { type: integer }
+            away: { type: integer }
+          required: [home, away]
+        stats:
+          type: object
+          properties:
+            home: { $ref: '#/components/schemas/TeamMatchStats' }
+            away: { $ref: '#/components/schemas/TeamMatchStats' }
+          required: [home, away]
+        ratings:
+          type: object
+          properties:
+            home: { $ref: '#/components/schemas/TeamRatings' }
+            away: { $ref: '#/components/schemas/TeamRatings' }
+          required: [home, away]
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchEvent'
+        insights:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplainableInsight'
+      required: [matchId, minute, status, score, stats, ratings, events, insights]
+
+    MatchStartResponse:
+      allOf:
+        - $ref: '#/components/schemas/MatchStateSnapshot'
+        - type: object
+          properties:
+            suggestedActions:
+              type: array
+              items:
+                $ref: '#/components/schemas/SubstitutionAction'
+          required: [suggestedActions]
+
+    TeamVectors:
+      type: object
+      properties:
+        control: { type: integer }
+        chanceCreation: { type: integer }
+        defensiveWall: { type: integer }
+        leftFlankRisk: { type: integer }
+        rightFlankRisk: { type: integer }
+        pressingPower: { type: integer }
+      required: [control, chanceCreation, defensiveWall, leftFlankRisk, rightFlankRisk, pressingPower]
+
+    TacticalImpactPreview:
+      type: object
+      properties:
+        before: { $ref: '#/components/schemas/TeamVectors' }
+        after: { $ref: '#/components/schemas/TeamVectors' }
+        deltas:
+          type: object
+          properties:
+            controlDelta: { type: integer }
+            chanceCreationDelta: { type: integer }
+            defenseDelta: { type: integer }
+            leftRiskDelta: { type: integer }
+            rightRiskDelta: { type: integer }
+            pressingDelta: { type: integer }
+          required: [controlDelta, chanceCreationDelta, defenseDelta, leftRiskDelta, rightRiskDelta, pressingDelta]
+      required: [before, after, deltas]
+
+    MatchSubstitutionResponse:
+      type: object
+      properties:
+        matchId: { type: string }
+        minute: { type: integer }
+        status:
+          type: string
+          enum: [PAUSED_FOR_COACH]
+        impactPreview:
+          $ref: '#/components/schemas/TacticalImpactPreview'
+        team:
+          $ref: '#/components/schemas/TeamInput'
+      required: [matchId, minute, status, impactPreview, team]
+
+    MatchGoalSummary:
+      type: object
+      properties:
+        minute: { type: integer }
+        team:
+          type: string
+          enum: [HOME, AWAY]
+        scorer: { type: string }
+        assist: { type: string }
+        zone:
+          $ref: '#/components/schemas/Zone'
+        chanceQuality: { type: number }
+      required: [minute, team, scorer, chanceQuality]
+
+    PlayerMatchRating:
+      type: object
+      properties:
+        playerId: { type: string }
+        playerName: { type: string }
+        team:
+          type: string
+          enum: [HOME, AWAY]
+        rating: { type: number }
+        goals: { type: integer }
+        assists: { type: integer }
+      required: [playerId, playerName, team, rating, goals, assists]
+
+    MatchFinalReport:
+      allOf:
+        - $ref: '#/components/schemas/SimulationResult'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [FINISHED]
+            playerRatings:
+              type: array
+              items:
+                $ref: '#/components/schemas/PlayerMatchRating'
+            goals:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchGoalSummary'
+            mvp:
+              oneOf:
+                - $ref: '#/components/schemas/PlayerMatchRating'
+                - type: 'null'
+          required: [status, playerRatings, goals, mvp]
+
+    MatchResumeResponse:
+      type: object
+      properties:
+        matchId: { type: string }
+        minute: { type: integer }
+        status:
+          type: string
+          enum: [FINISHED]
+        report:
+          $ref: '#/components/schemas/MatchFinalReport'
+      required: [matchId, minute, status, report]
+
+    MatchPausedStateResponse:
+      type: object
+      properties:
+        matchId: { type: string }
+        minute: { type: integer }
+        status:
+          type: string
+          enum: [PAUSED_FOR_COACH]
+        pauseState:
+          $ref: '#/components/schemas/MatchStartResponse'
+      required: [matchId, minute, status, pauseState]
+
+    MatchFinishedStateResponse:
+      type: object
+      properties:
+        matchId: { type: string }
+        minute: { type: integer }
+        status:
+          type: string
+          enum: [FINISHED]
+        report:
+          $ref: '#/components/schemas/MatchFinalReport'
+      required: [matchId, minute, status, report]
+
+    SubstitutionRequest:
+      type: object
+      properties:
+        substitutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstitutionAction'
+        tacticalStyle:
+          $ref: '#/components/schemas/TacticalStyle'
+      required: [substitutions]

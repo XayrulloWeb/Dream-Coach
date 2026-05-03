@@ -54,6 +54,7 @@ export const listPlayers = async (req: Request, res: Response): Promise<void> =>
         id: true,
         name: true,
         fullName: true,
+        faceUrl: true,
         age: true,
         realPosition: true,
         preferredPositions: true,

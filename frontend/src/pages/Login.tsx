@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../lib/api';
 
@@ -42,7 +42,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#272a2c] border border-[#3d4a3d] mb-4 shadow-[0_0_20px_rgba(75,226,119,0.2)]">
             <span className="material-symbols-outlined text-[#4be277] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>sports_soccer</span>
           </div>
-          <h1 className="font-['Lexend'] text-3xl font-black tracking-tight uppercase mb-2">STADIUM PRO</h1>
+          <h1 className="font-['Lexend'] text-3xl font-black tracking-tight uppercase mb-2">DREAM COACH</h1>
           <h2 className="font-['Lexend'] text-2xl text-[#bccbb9]">Welcome Back, Coach!</h2>
         </div>
 

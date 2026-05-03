@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toApiError } from '../lib/api';
+import { api, toApiError } from '../lib/api';
 import { fetchPlayers, type CatalogPlayer } from '../lib/players';
 import {
   buildSimulationPayloadFromStarters,
@@ -8,7 +8,8 @@ import {
   saveSquadPayload,
 } from '../lib/squad';
 import { saveSquadSnapshot } from '../lib/savedSquads';
-import type { TacticalStyle } from '../types/simulation';
+import type { TacticalStyle, TeamRatings } from '../types/simulation';
+import MobileBottomNav from '../components/MobileBottomNav';
 
 type Slot = {
   id: string;
@@ -52,18 +53,18 @@ const ALL_SLOTS = [...STARTER_SLOTS, ...BENCH_SLOTS];
 const STARTER_SLOT_IDS = new Set(STARTER_SLOTS.map((slot) => slot.id));
 const SLOT_LABEL_BY_ID = Object.fromEntries(ALL_SLOTS.map((slot) => [slot.id, slot.label])) as Record<string, string>;
 
-const PITCH_LAYOUT: PitchLayoutItem[] = [
-  { slotId: 'lw', className: 'absolute top-[12%] left-[14%]' },
-  { slotId: 'st', className: 'absolute top-[8%] left-1/2 -translate-x-1/2' },
-  { slotId: 'rw', className: 'absolute top-[12%] right-[14%]' },
-  { slotId: 'lcm', className: 'absolute top-[35%] left-[22%]' },
-  { slotId: 'cdm', className: 'absolute top-[41%] left-1/2 -translate-x-1/2' },
-  { slotId: 'rcm', className: 'absolute top-[35%] right-[22%]' },
-  { slotId: 'lb', className: 'absolute top-[62%] left-[8%]' },
-  { slotId: 'lcb', className: 'absolute top-[66%] left-[32%]' },
-  { slotId: 'rcb', className: 'absolute top-[66%] right-[32%]' },
-  { slotId: 'rb', className: 'absolute top-[62%] right-[8%]' },
-  { slotId: 'gk', className: 'absolute bottom-[6%] left-1/2 -translate-x-1/2' },
+const PITCH_LAYOUT: { slotId: string, style: React.CSSProperties }[] = [
+  { slotId: 'lw', style: { position: 'absolute', top: '12%', left: '14%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'st', style: { position: 'absolute', top: '8%', left: '50%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'rw', style: { position: 'absolute', top: '12%', right: '14%', transform: 'translate(50%, -50%)' } },
+  { slotId: 'lcm', style: { position: 'absolute', top: '35%', left: '22%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'cdm', style: { position: 'absolute', top: '41%', left: '50%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'rcm', style: { position: 'absolute', top: '35%', right: '22%', transform: 'translate(50%, -50%)' } },
+  { slotId: 'lb', style: { position: 'absolute', top: '62%', left: '14%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'lcb', style: { position: 'absolute', top: '66%', left: '32%', transform: 'translate(-50%, -50%)' } },
+  { slotId: 'rcb', style: { position: 'absolute', top: '66%', right: '32%', transform: 'translate(50%, -50%)' } },
+  { slotId: 'rb', style: { position: 'absolute', top: '62%', right: '14%', transform: 'translate(50%, -50%)' } },
+  { slotId: 'gk', style: { position: 'absolute', bottom: '6%', left: '50%', transform: 'translate(-50%, -50%)' } },
 ];
 
 export default function PlayerSelection() {
@@ -78,15 +79,14 @@ export default function PlayerSelection() {
   const [positionOnly, setPositionOnly] = useState(true);
   const [items, setItems] = useState<CatalogPlayer[]>([]);
   const [totalPages, setTotalPages] = useState(1);
+  const [appliedPositionFilter, setAppliedPositionFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saveError, setSaveError] = useState('');
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [formation, setFormation] = useState('4-3-3');
-  const [pressing, setPressing] = useState(70);
-  const [mentality, setMentality] = useState(58);
-  const [passingStyle, setPassingStyle] = useState(65);
+  const [tacticalStyle, setTacticalStyle] = useState<TacticalStyle>('BALANCED');
 
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
@@ -96,6 +96,42 @@ export default function PlayerSelection() {
     [selectedSlotId],
   );
 
+  const [diagnostics, setDiagnostics] = useState<TeamRatings | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchDiagnostics = async () => {
+      // Build temporary payload to analyze
+      const missing = STARTER_SLOTS.filter((slot) => !assignments[slot.id]);
+      if (missing.length > 0) {
+        if (active) setDiagnostics(null);
+        return;
+      }
+
+      const startersForPayload = STARTER_SLOTS.map((slot) =>
+        toPayloadPlayer(assignments[slot.id] as CatalogPlayer, slot.role),
+      );
+
+      const payload = buildSimulationPayloadFromStarters(startersForPayload, tacticalStyle);
+      payload.team.formation = formation;
+
+      try {
+        const response = await api.post<TeamRatings>('/api/matches/analyze-squad', payload);
+        if (active) {
+          setDiagnostics(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch squad diagnostics:', err);
+      }
+    };
+
+    const timeout = setTimeout(fetchDiagnostics, 500); // Debounce to avoid spamming
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [assignments, formation, tacticalStyle]);
+
   useEffect(() => {
     const existing = loadSquadPayload();
     if (!existing) {
@@ -103,32 +139,8 @@ export default function PlayerSelection() {
     }
 
     setFormation(existing.team.formation || '4-3-3');
-    const style = existing.team.tacticalStyle;
-    if (style === 'HIGH_PRESS') {
-      setPressing(82);
-      setMentality(70);
-      setPassingStyle(58);
-      return;
-    }
-
-    if (style === 'LOW_BLOCK') {
-      setPressing(34);
-      setMentality(25);
-      setPassingStyle(42);
-      return;
-    }
-
-    if (style === 'POSSESSION') {
-      setPressing(60);
-      setMentality(55);
-      setPassingStyle(84);
-      return;
-    }
-
-    if (style === 'COUNTER') {
-      setPressing(52);
-      setMentality(76);
-      setPassingStyle(32);
+    if (existing.team.tacticalStyle) {
+      setTacticalStyle(existing.team.tacticalStyle);
     }
   }, []);
 
@@ -148,19 +160,33 @@ export default function PlayerSelection() {
       setLoading(true);
       setError('');
       try {
-        const response = await fetchPlayers({
-          q: debouncedQuery || undefined,
-          page,
-          limit: 24,
-          position: positionOnly && selectedSlot ? selectedSlot.role : undefined,
-        });
+        const candidatePositions = getCandidatePositions(positionOnly ? selectedSlot?.role : undefined);
+        let response = null as Awaited<ReturnType<typeof fetchPlayers>> | null;
+        let usedFilter: string | null = null;
+
+        for (const candidate of candidatePositions) {
+          const result = await fetchPlayers({
+            q: debouncedQuery || undefined,
+            page,
+            limit: 24,
+            position: candidate ?? undefined,
+          });
+
+          response = result;
+          usedFilter = candidate;
+
+          if (result.items.length > 0) {
+            break;
+          }
+        }
 
         if (!active) {
           return;
         }
 
-        setItems(response.items);
-        setTotalPages(response.pagination.totalPages);
+        setItems(response?.items ?? []);
+        setTotalPages(response?.pagination.totalPages ?? 1);
+        setAppliedPositionFilter(usedFilter);
       } catch (reason) {
         if (!active) {
           return;
@@ -195,7 +221,6 @@ export default function PlayerSelection() {
     [assignments],
   );
 
-  const flankBalance = useMemo(() => calculateFlankBalance(assignments), [assignments]);
 
   const onAssignPlayer = (player: CatalogPlayer) => {
     if (!selectedSlot) {
@@ -246,7 +271,7 @@ export default function PlayerSelection() {
       return;
     }
 
-    const tacticalStyle = deriveTacticalStyle(pressing, mentality, passingStyle);
+    // tacticalStyle is already in state
 
     const startersForPayload = STARTER_SLOTS.map((slot) =>
       toPayloadPlayer(assignments[slot.id] as CatalogPlayer, slot.role),
@@ -271,7 +296,7 @@ export default function PlayerSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-[#101415] text-[#e0e3e5] font-['Inter']">
+    <div className="min-h-screen bg-[#101415] text-[#e0e3e5] font-['Inter'] pb-24">
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
         <header className="flex items-center justify-between">
           <button onClick={() => navigate('/squad-builder')} className="text-[#9CA3AF]">
@@ -347,7 +372,8 @@ export default function PlayerSelection() {
                     setSelectedSlotId(slot.id);
                     setPickerOpen(true);
                   }}
-                  className={`${layout.className} z-10 flex flex-col items-center`}
+                  style={{ ...layout.style, zIndex: 10 }}
+                  className="flex flex-col items-center"
                 >
                   <div
                     className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
@@ -393,13 +419,13 @@ export default function PlayerSelection() {
         </section>
 
         <section className="rounded-xl border border-[#3d4a3d] bg-[#1d2022] p-4 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Formation</p>
               <select
                 value={formation}
                 onChange={(e) => setFormation(e.target.value)}
-                className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2"
+                className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
               >
                 <option>4-3-3</option>
                 <option>4-2-3-1</option>
@@ -408,14 +434,95 @@ export default function PlayerSelection() {
                 <option>5-3-2</option>
               </select>
             </div>
-            <SliderCompact label="Pressing" value={pressing} setValue={setPressing} />
-            <SliderCompact label="Mentality" value={mentality} setValue={setMentality} />
-            <SliderCompact label="Passing" value={passingStyle} setValue={setPassingStyle} />
+            <div>
+              <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Tactical Preset</p>
+              <select
+                value={tacticalStyle}
+                onChange={(e) => setTacticalStyle(e.target.value as TacticalStyle)}
+                className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
+              >
+                <option value="BALANCED">Balanced</option>
+                <option value="HIGH_PRESS">High Press</option>
+                <option value="COUNTER">Counter Attack</option>
+                <option value="LOW_BLOCK">Low Block</option>
+                <option value="POSSESSION">Possession</option>
+              </select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FlankIndicator title="Left Flank Balance" attack={flankBalance.left.attack} defense={flankBalance.left.defense} />
-            <FlankIndicator title="Right Flank Balance" attack={flankBalance.right.attack} defense={flankBalance.right.defense} />
+          <div className="rounded-xl border border-[#3d4a3d] bg-[#111827] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#4be277] uppercase font-['Lexend']">Team Diagnostics</h3>
+              {diagnostics && diagnostics.vulnerabilities.length > 0 && (
+                <span className="bg-[#ffb4ab]/20 text-[#ffb4ab] text-[10px] px-2 py-0.5 rounded border border-[#ffb4ab]/30">
+                  {diagnostics.vulnerabilities.length} Issues
+                </span>
+              )}
+            </div>
+
+            {!diagnostics ? (
+              <p className="text-xs text-[#9CA3AF]">Fill starting XI to see diagnostics.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Control</p>
+                    <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.control}</p>
+                  </div>
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Chance Creation</p>
+                    <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.chanceCreation}</p>
+                  </div>
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Defensive Wall</p>
+                    <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.defensiveWall}</p>
+                  </div>
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Transition Def</p>
+                    <p className="text-lg font-bold text-[#e0e3e5]">{diagnostics.transitionDefense}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Left Flank Risk</p>
+                    <p className={`text-sm font-bold ${diagnostics.flankSecurity.left < 50 ? 'text-[#ffb4ab]' : 'text-[#4be277]'}`}>
+                      {diagnostics.flankSecurity.left < 40 ? 'High' : diagnostics.flankSecurity.left < 60 ? 'Medium' : 'Low'} ({diagnostics.flankSecurity.left})
+                    </p>
+                  </div>
+                  <div className="bg-[#0f172a] rounded p-2 border border-[#1e293b]">
+                    <p className="text-[10px] text-[#9CA3AF] uppercase">Right Flank Risk</p>
+                    <p className={`text-sm font-bold ${diagnostics.flankSecurity.right < 50 ? 'text-[#ffb4ab]' : 'text-[#4be277]'}`}>
+                      {diagnostics.flankSecurity.right < 40 ? 'High' : diagnostics.flankSecurity.right < 60 ? 'Medium' : 'Low'} ({diagnostics.flankSecurity.right})
+                    </p>
+                  </div>
+                </div>
+
+                {diagnostics.vulnerabilities.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {diagnostics.vulnerabilities.map((vuln: any, idx) => (
+                      <div key={idx} className="flex gap-2 items-start bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 p-3 rounded text-sm">
+                        <span className="material-symbols-outlined text-[#ffb4ab] text-sm mt-0.5 shrink-0">warning</span>
+                        <div className="space-y-1">
+                          <p className="text-[#ffb4ab] font-bold text-[11px] uppercase tracking-wider">{vuln.type.replace(/_/g, ' ')}</p>
+                          <p className="text-[#e0e3e5] text-xs">{vuln.message}</p>
+                          {vuln.suggestedActions && vuln.suggestedActions.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-[#ffb4ab]/20">
+                              <p className="text-[10px] text-[#ffb4ab]/80 uppercase mb-1 font-semibold">Suggested Action</p>
+                              <ul className="text-[11px] text-[#9CA3AF] list-disc list-inside">
+                                {vuln.suggestedActions.map((action: string, aidx: number) => (
+                                  <li key={aidx}>{action}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 items-center">
@@ -450,7 +557,33 @@ export default function PlayerSelection() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {positionOnly && selectedSlot?.role && appliedPositionFilter && appliedPositionFilter !== selectedSlot.role ? (
+                  <p className="text-xs text-[#9CA3AF] mb-3">
+                    No exact {selectedSlot.role} list in dataset. Showing closest position: {appliedPositionFilter}.
+                  </p>
+                ) : null}
+
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search player..."
+                    className="flex-1 rounded-lg border border-[#334155] bg-[#0b1220] px-3 py-2 text-sm outline-none focus:border-[#4be277]"
+                  />
+                  <label className="text-xs flex items-center gap-2 text-[#9CA3AF]">
+                    <input
+                      type="checkbox"
+                      checked={positionOnly}
+                      onChange={(e) => {
+                        setPositionOnly(e.target.checked);
+                        setPage(1);
+                      }}
+                    />
+                    Position filter
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {items.map((player) => {
                     const assignedSlotId = assignedByPlayerId.get(player.id);
                     const assignedElsewhere = Boolean(assignedSlotId && assignedSlotId !== selectedSlot?.id);
@@ -464,22 +597,36 @@ export default function PlayerSelection() {
                           }
                         }}
                         disabled={assignedElsewhere}
-                        className={`rounded-lg border p-3 text-left transition-colors ${
+                        className={`relative overflow-hidden rounded-xl border p-2 text-left transition ${
                           assignedElsewhere
-                            ? 'border-[#475569] bg-[#0b1220] opacity-65 cursor-not-allowed'
-                            : 'border-[#334155] bg-[#111827] hover:border-[#4be277]'
+                            ? 'border-[#475569] bg-[#090f1b] opacity-65 cursor-not-allowed'
+                            : 'border-[#1f2e4d] bg-gradient-to-b from-[#0d1b37] via-[#08142b] to-[#061026] hover:border-[#4be277] hover:shadow-[0_0_0_1px_rgba(75,226,119,0.3),0_12px_22px_rgba(4,20,44,0.55)]'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold truncate pr-2">{player.name}</p>
-                          <span className="text-[#4be277] text-sm font-bold">{player.rating}</span>
+                        <div className="absolute -top-8 -right-6 h-20 w-20 rounded-full bg-[#4be2771a]" />
+                        <div className="relative flex items-start justify-between">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <PlayerPortrait name={player.name} faceUrl={player.faceUrl} />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-[#e5efff]">{player.name}</p>
+                              <p className="mt-0.5 text-[11px] text-[#8fa5c8]">{player.realPosition}</p>
+                            </div>
+                          </div>
+                          <div className="rounded-md border border-[#4be27766] bg-[#0d2c1d] px-2 py-0.5 text-sm font-bold text-[#4be277]">
+                            {player.rating}
+                          </div>
                         </div>
-                        <p className="text-xs text-[#9CA3AF] mt-1">
-                          {player.realPosition} • {player.preferredFoot} foot • WR {player.attackWorkRate}/{player.defenseWorkRate}
+                        <p className="mt-2 text-[11px] text-[#9fb0cb]">
+                          {player.preferredFoot} foot • WR {player.attackWorkRate}/{player.defenseWorkRate}
                         </p>
-                        <p className="text-xs text-[#9CA3AF] mt-1">
-                          PAC {player.pac} SHO {player.sho} PAS {player.pas} DRI {player.dri} DEF {player.def} PHY {player.phy}
-                        </p>
+                        <div className="mt-2 grid grid-cols-3 gap-1 text-[10px]">
+                          <StatChip label="PAC" value={player.pac} />
+                          <StatChip label="SHO" value={player.sho} />
+                          <StatChip label="PAS" value={player.pas} />
+                          <StatChip label="DRI" value={player.dri} />
+                          <StatChip label="DEF" value={player.def} />
+                          <StatChip label="PHY" value={player.phy} />
+                        </div>
                         {assignedElsewhere ? (
                           <p className="text-[11px] text-[#F59E0B] mt-2">
                             Assigned to {SLOT_LABEL_BY_ID[assignedSlotId ?? ''] ?? assignedSlotId}
@@ -489,6 +636,24 @@ export default function PlayerSelection() {
                     );
                   })}
                 </div>
+
+                {!loading && items.length === 0 ? (
+                  <div className="mt-3 rounded-lg border border-[#334155] bg-[#111827] p-4">
+                    <p className="text-sm text-[#e0e3e5]">No players found for this filter.</p>
+                    {positionOnly ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPositionOnly(false);
+                          setPage(1);
+                        }}
+                        className="mt-3 rounded-lg border border-[#4be277] px-3 py-2 text-sm text-[#4be277] hover:bg-[#4be2771f]"
+                      >
+                        Show all players
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -516,13 +681,22 @@ export default function PlayerSelection() {
 
         {saveError && <p className="text-sm text-[#ffb4ab]">{saveError}</p>}
 
-        <button
-          onClick={onSave}
-          className="w-full bg-[#4be277] text-[#003915] py-4 rounded-xl font-['Lexend'] font-semibold uppercase"
-        >
-          Save Squad Selection
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/player-profile')}
+            className="w-full rounded-xl border border-[#3d4a3d] bg-[#111827] py-4 font-['Lexend'] text-[#e0e3e5] font-semibold uppercase"
+          >
+            Open Player Profile
+          </button>
+          <button
+            onClick={onSave}
+            className="w-full bg-[#4be277] text-[#003915] py-4 rounded-xl font-['Lexend'] font-semibold uppercase"
+          >
+            Save Squad Selection
+          </button>
+        </div>
       </main>
+      <MobileBottomNav active="squad" />
     </div>
   );
 }
@@ -580,6 +754,7 @@ function simulationPlayerToCatalogPlayer(player: {
     id: player.id,
     name: player.name,
     fullName: player.name,
+    faceUrl: null,
     age: null,
     realPosition: player.naturalPosition,
     preferredPositions: player.preferredPositions ?? [player.naturalPosition],
@@ -622,65 +797,59 @@ function toPayloadPlayer(player: CatalogPlayer, rolePosition: string) {
   };
 }
 
-function deriveTacticalStyle(pressing: number, mentality: number, passingStyle: number): TacticalStyle {
-  if (pressing >= 76 && mentality >= 55) {
-    return 'HIGH_PRESS';
+
+function getCandidatePositions(role?: string): Array<string | null> {
+  if (!role) {
+    return [null];
   }
 
-  if (mentality <= 30 && pressing <= 45) {
-    return 'LOW_BLOCK';
-  }
-
-  if (passingStyle >= 75 && mentality >= 40 && mentality <= 68) {
-    return 'POSSESSION';
-  }
-
-  if (mentality >= 72 && passingStyle <= 45) {
-    return 'COUNTER';
-  }
-
-  return 'BALANCED';
-}
-
-function calculateFlankBalance(assignments: AssignmentMap): {
-  left: { attack: number; defense: number };
-  right: { attack: number; defense: number };
-} {
-  const lw = assignments.lw;
-  const lb = assignments.lb;
-  const rw = assignments.rw;
-  const rb = assignments.rb;
-
-  const leftAttack = average([lw ? (lw.pac + lw.dri + lw.sho) / 3 : 45, lb ? (lb.pac + lb.pas) / 2 : 45]);
-  const leftDefense = average([
-    lw ? (lw.def + workRateToNumber(lw.defenseWorkRate) * 12) / 2 : 38,
-    lb ? (lb.def + lb.phy + workRateToNumber(lb.defenseWorkRate) * 10) / 3 : 40,
-  ]);
-
-  const rightAttack = average([rw ? (rw.pac + rw.dri + rw.sho) / 3 : 45, rb ? (rb.pac + rb.pas) / 2 : 45]);
-  const rightDefense = average([
-    rw ? (rw.def + workRateToNumber(rw.defenseWorkRate) * 12) / 2 : 38,
-    rb ? (rb.def + rb.phy + workRateToNumber(rb.defenseWorkRate) * 10) / 3 : 40,
-  ]);
-
-  return {
-    left: { attack: Math.round(leftAttack), defense: Math.round(leftDefense) },
-    right: { attack: Math.round(rightAttack), defense: Math.round(rightDefense) },
+  const normalized = role.toUpperCase();
+  const fallbackMap: Record<string, string[]> = {
+    LCM: ['CM', 'CAM', 'CDM'],
+    RCM: ['CM', 'CAM', 'CDM'],
+    LCB: ['CB'],
+    RCB: ['CB'],
   };
+
+  const fallbacks = fallbackMap[normalized] ?? [];
+  return [normalized, ...fallbacks];
 }
 
-function workRateToNumber(rate: 'LOW' | 'MEDIUM' | 'HIGH'): number {
-  if (rate === 'HIGH') {
-    return 3;
-  }
-  if (rate === 'LOW') {
-    return 1;
-  }
-  return 2;
+function PlayerPortrait({ name, faceUrl }: { name: string; faceUrl?: string | null }) {
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#345083] bg-[#091123]">
+      {faceUrl ? (
+        <img
+          src={faceUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      ) : null}
+      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-[#9cb2da]">
+        {initials || 'P'}
+      </div>
+    </div>
+  );
 }
 
-function average(values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+function StatChip({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-[#21355f] bg-[#0a1831] px-1.5 py-1 text-center">
+      <span className="text-[#6f86b0]">{label}</span>{' '}
+      <span className="font-semibold text-[#d7e5ff]">{value}</span>
+    </div>
+  );
 }
 
 function SliderCompact({

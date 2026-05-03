@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../lib/api';
 
@@ -53,7 +53,7 @@ export default function SignUp() {
       <header className="flex justify-between items-center px-5 py-4 bg-[#02061799] backdrop-blur-md border-b border-white/10 shadow-2xl">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[#22c55e] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>sports_soccer</span>
-          <span className="text-xl font-black italic text-[#22c55e] tracking-tight font-['Lexend']">STADIUM PRO</span>
+          <span className="text-xl font-black italic text-[#22c55e] tracking-tight font-['Lexend']">DREAM COACH</span>
         </div>
         <Link to="/login" className="text-[#bccbb9] hover:text-[#4be277] transition-colors">Login</Link>
       </header>

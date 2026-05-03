@@ -44,7 +44,11 @@ type EventCounters = {
   bigChances: number;
 };
 
-const DEFAULT_ZIP_PATH = path.resolve(process.cwd(), '..', 'frontend', 'public', 'footbal events.zip');
+const DEFAULT_ZIP_CANDIDATES = [
+  path.resolve(process.cwd(), '..', 'frontend', 'public', 'footbal events.zip'),
+  path.resolve(process.cwd(), '..', 'frontend', 'public', 'footabal events.zip'),
+  path.resolve(process.cwd(), '..', 'frontend', 'public', 'football events.zip'),
+];
 const DEFAULT_MAPPING_PATH = path.resolve(process.cwd(), 'data', 'mappings', 'football_events.mapping.json');
 const DEFAULT_DATASET_NAME = 'football-events-kaggle';
 const DEFAULT_PROFILE_KEY = 'default-match-calibration-v1';
@@ -197,7 +201,7 @@ function resolveOptions(args: string[]): CalibrationOptions {
 
   const zipPath = values.get('zip')
     ? path.resolve(process.cwd(), values.get('zip') as string)
-    : DEFAULT_ZIP_PATH;
+    : resolveDefaultZipPath();
 
   const eventsCsvPath = values.get('eventsCsv')
     ? path.resolve(process.cwd(), values.get('eventsCsv') as string)
@@ -224,6 +228,16 @@ function resolveOptions(args: string[]): CalibrationOptions {
     datasetVersion,
     profileKey,
   };
+}
+
+function resolveDefaultZipPath(): string {
+  for (const candidate of DEFAULT_ZIP_CANDIDATES) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return DEFAULT_ZIP_CANDIDATES[0] as string;
 }
 
 async function loadMapping(mappingPath: string): Promise<MappingFile> {

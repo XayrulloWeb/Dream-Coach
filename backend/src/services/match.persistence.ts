@@ -145,11 +145,11 @@ export async function persistMatchFinal(
       data: report.playerRatings.map((rating) => ({
         matchId,
         playerId: rating.playerId,
-        playerName: rating.playerName,
-        team: rating.team,
+        playerName: rating.name,
+        team: rating.playerId.startsWith('AWAY') ? 'AWAY' : 'HOME',
         rating: rating.rating,
-        goals: rating.goals,
-        assists: rating.assists,
+        goals: rating.stats.goals,
+        assists: rating.stats.assists,
       })),
     });
   }

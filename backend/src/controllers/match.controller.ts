@@ -9,6 +9,7 @@ import {
   startStatefulMatch,
 } from '../services/match.session';
 import { PlayerInput, SimulationInput, SubstitutionAction, TacticalStyle, TeamInput, WorkRate } from '../types/simulation';
+import { prisma } from '../lib/prisma';
 
 const TACTICAL_STYLES: TacticalStyle[] = [
   'BALANCED',
@@ -192,6 +193,32 @@ export const getMatchState = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+export const getMatchHistory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!prisma) {
+      res.status(200).json({ items: [] });
+      return;
+    }
+
+    const matches = await prisma.match.findMany({
+      where: {
+        status: 'FINISHED',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 20,
+    });
+
+    res.status(200).json({ items: matches });
+  } catch (error) {
+    res.status(500).json({
+      code: 'INTERNAL_ERROR',
+      message: error instanceof Error ? error.message : 'Failed to load match history',
+    });
+  }
+};
+
 function toSimulationInput(payload: Record<string, unknown>): SimulationInput {
   const teamRaw = payload.team;
   if (!teamRaw || typeof teamRaw !== 'object') {
@@ -356,3 +383,103 @@ function normalizeStamina(value: unknown): number {
 
   return Math.max(1, Math.min(100, Math.round(value)));
 }
+
+export const analyzeSquad = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      res.status(400).json({ code: 'SIM_VALIDATION_ERROR', message: 'Request body is required' });
+      return;
+    }
+
+    const input = toSimulationInput(payload as Record<string, unknown>);
+    
+    // We import here to avoid circular dependency issues if any, or we can add it to the top.
+    // Let's rely on the imports at the top. Wait, we need to add imports to the top.
+    // I will use require inline for now if imports aren't available, but I'll add the imports at the top in the next step.
+    const { createTeamRuntime, createDefaultOpponent, calculateTeamRatings } = require('../services/simulation.engine');
+    
+    const homeTeam = createTeamRuntime(input.team);
+    const awayTeam = createTeamRuntime(input.opponent ?? createDefaultOpponent());
+    
+    const ratings = calculateTeamRatings(homeTeam, awayTeam);
+    
+    res.status(200).json(ratings);
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ code: 'SIM_VALIDATION_ERROR', message: error.message });
+      return;
+    }
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to analyze squad' });
+  }
+};
+
+export const previewSubstitutions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const matchId = typeof req.params.matchId === 'string' ? req.params.matchId : '';
+    if (!matchId) {
+      res.status(400).json({ code: 'SIM_VALIDATION_ERROR', message: 'matchId is required' });
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const substitutions = normalizeSubstitutions(body?.changes || body?.substitutions);
+    
+    const tacticalStyleRaw = typeof body?.tacticsChanges === 'object' && body.tacticsChanges !== null 
+      ? (body.tacticsChanges as Record<string, any>).style 
+      : undefined;
+      
+    const { previewStatefulSubstitutions } = require('../services/match.session');
+    const { explainSubstitutionImpact } = require('../services/explainer.service');
+
+    try {
+      const preview = previewStatefulSubstitutions(matchId, substitutions, tacticalStyleRaw as any);
+      const explainerResult = explainSubstitutionImpact(preview.deltas, tacticalStyleRaw as any);
+      
+      res.status(200).json({
+        before: preview.before,
+        after: preview.after,
+        deltas: preview.deltas,
+        warningsResolved: explainerResult.warningsResolved,
+        newWarnings: explainerResult.newWarnings,
+        summary: explainerResult.summary
+      });
+    } catch (e: any) {
+      if (e.message === 'Match session not found') {
+        res.status(404).json({ code: 'SIM_NOT_FOUND', message: e.message });
+        return;
+      }
+      throw e;
+    }
+  } catch (error) {
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to preview substitutions' });
+  }
+};
+
+export const getMatchReport = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { matchId } = req.params;
+    
+    if (!matchId) {
+      res.status(400).json({ code: 'INVALID_INPUT', message: 'Match ID is required' });
+      return;
+    }
+
+    const { loadPersistedMatchState } = require('../services/match.persistence');
+    const state = await loadPersistedMatchState(matchId);
+
+    if (!state) {
+      res.status(404).json({ code: 'MATCH_NOT_FOUND', message: 'Match not found' });
+      return;
+    }
+
+    if (state.status !== 'FINISHED') {
+      res.status(400).json({ code: 'MATCH_NOT_FINISHED', message: 'Match report is only available after the match has finished' });
+      return;
+    }
+
+    res.status(200).json(state.report);
+  } catch (error) {
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to fetch match report' });
+  }
+};

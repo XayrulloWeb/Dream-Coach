@@ -9,6 +9,68 @@ export type TacticalStyle =
 
 export type Zone = 'left' | 'center' | 'right';
 
+// ===== Core Engine 3.0: Zone Vectors =====
+export type ZoneVector = {
+  attack: number;
+  defense: number;
+  control: number;
+  transitionRisk: number;
+};
+
+export type ZoneGrid = {
+  leftAttack: ZoneVector;
+  centerAttack: ZoneVector;
+  rightAttack: ZoneVector;
+  leftMidfield: ZoneVector;
+  centerMidfield: ZoneVector;
+  rightMidfield: ZoneVector;
+  leftDefense: ZoneVector;
+  centerDefense: ZoneVector;
+  rightDefense: ZoneVector;
+};
+
+// ===== Core Engine 3.0: Position Fit Split =====
+export type PositionFitResult = {
+  overallFit: number;
+  attackingFit: number;
+  defensiveFit: number;
+};
+
+// ===== Core Engine 3.0: Player Roles =====
+export type PlayerRole =
+  | 'POACHER' | 'PRESSING_FORWARD' | 'COMPLETE_FORWARD' | 'FALSE_NINE' | 'TARGET_MAN'
+  | 'INSIDE_FORWARD' | 'WIDE_PLAYMAKER' | 'TRADITIONAL_WINGER'
+  | 'DEEP_PLAYMAKER' | 'BOX_TO_BOX' | 'BALL_WINNER' | 'ADVANCED_PLAYMAKER'
+  | 'ANCHOR' | 'MEZZALA'
+  | 'INVERTED_FULLBACK' | 'OVERLAPPING_FULLBACK' | 'DEFENSIVE_FULLBACK'
+  | 'BALL_PLAYING_CB' | 'STOPPER'
+  | 'SWEEPER_KEEPER' | 'SHOT_STOPPER'
+  | 'DEFAULT';
+
+// ===== Core Engine 3.0: Match Momentum =====
+export type MoraleLevel = 'HIGH' | 'NEUTRAL' | 'LOW';
+
+export type MatchMomentum = {
+  homeScoreDiff: number;
+  minute: number;
+  homeMorale: MoraleLevel;
+  awayMorale: MoraleLevel;
+  momentumSwing: number; // -10 to +10, positive = home momentum
+};
+
+// ===== Core Engine 3.0: Tactical Rule Engine =====
+export type TacticalRuleEffect = {
+  controlDelta?: number;
+  chanceCreationDelta?: number;
+  defensiveWallDelta?: number;
+  transitionDefenseDelta?: number;
+  pressingPowerDelta?: number;
+  flankSecurityLeftDelta?: number;
+  flankSecurityRightDelta?: number;
+  opponentChanceBoost?: number;
+  vulnerability?: string;
+};
+
 export type PlayerInput = {
   id: string;
   name: string;
@@ -16,6 +78,7 @@ export type PlayerInput = {
   rolePosition: string;
   preferredPositions?: string[];
   isSubstitute?: boolean;
+  role?: PlayerRole;
   pac: number;
   sho: number;
   pas: number;
@@ -43,6 +106,9 @@ export type TeamRatings = {
   flankSecurity: Record<Zone, number>;
   attackingThreat: Record<Zone, number>;
   vulnerabilities: string[];
+  // Core Engine 3.0 additions
+  zoneGrid?: ZoneGrid;
+  appliedRules?: string[];
 };
 
 export type MatchIssue = {
@@ -81,6 +147,7 @@ export type SimulationInput = {
   team: TeamInput;
   opponent?: TeamInput;
   venue?: 'HOME' | 'AWAY' | 'NEUTRAL';
+  realismFactor?: number; // 0.0 to 1.0, default 0.85 (85% logic, 15% noise)
 };
 
 export type SimulationCalibration = {
@@ -189,11 +256,20 @@ export type MatchSubstitutionResponse = {
 
 export type PlayerMatchRating = {
   playerId: string;
-  playerName: string;
-  team: 'HOME' | 'AWAY';
+  name: string;
+  position: string;
   rating: number;
-  goals: number;
-  assists: number;
+  minutesPlayed: number;
+  stats: {
+    goals: number;
+    assists: number;
+    shots: number;
+    keyPasses: number;
+    tackles: number;
+    interceptions: number;
+    saves?: number;
+  };
+  ratingReasons: string[];
 };
 
 export type MatchGoalSummary = {
@@ -209,7 +285,26 @@ export type MatchFinalReport = SimulationResult & {
   status: MatchStatus;
   playerRatings: PlayerMatchRating[];
   goals: MatchGoalSummary[];
-  mvp: PlayerMatchRating | null;
+  mvp: {
+    playerId: string;
+    name: string;
+    rating: number;
+    reason: string;
+  } | null;
+  tacticalSummary: {
+    whatWorked: string[];
+    whatFailed: string[];
+    keyDecision?: string;
+    nextMatchAdvice: string[];
+  };
+  coachCard?: {
+    title: string;
+    score: string;
+    formation: string;
+    mvp: { name: string; rating: number } | null;
+    keyDecision: string;
+    tacticalTag: string;
+  };
 };
 
 export type MatchResumeResponse = {

@@ -1,33 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { hasCompletedOnboarding, markOnboardingCompleted } from '../lib/onboarding';
 import background from '../assets/Images/backgroundFlow.png';
 
-type Experience = 'coach' | 'casual';
+/* ────────────────────────────────────────────────────
+   Data
+   ──────────────────────────────────────────────────── */
 
-type Club = {
-  id: string;
-  name: string;
-  badge: string;
-};
+type Club = { id: string; name: string; crest: string };
 
-const clubs: Club[] = [
-  { id: 'real-madrid', name: 'Real Madrid', badge: 'RM' },
-  { id: 'barcelona', name: 'Barcelona', badge: 'BAR' },
-  { id: 'man-city', name: 'Man City', badge: 'MCI' },
-  { id: 'man-united', name: 'Man United', badge: 'MUN' },
-  { id: 'arsenal', name: 'Arsenal', badge: 'ARS' },
-  { id: 'liverpool', name: 'Liverpool', badge: 'LIV' },
-  { id: 'bayern', name: 'Bayern', badge: 'BAY' },
-  { id: 'psg', name: 'PSG', badge: 'PSG' },
+const CLUBS: Club[] = [
+  { id: 'real-madrid', name: 'Real Madrid', crest: '🤍' },
+  { id: 'barcelona', name: 'FC Barcelona', crest: '🔵🔴' },
+  { id: 'man-city', name: 'Manchester City', crest: '🩵' },
+  { id: 'liverpool', name: 'Liverpool FC', crest: '🔴' },
+  { id: 'arsenal', name: 'Arsenal FC', crest: '🔴⚪' },
+  { id: 'bayern', name: 'Bayern Munich', crest: '❤️' },
+  { id: 'psg', name: 'Paris SG', crest: '🔵' },
+  { id: 'juventus', name: 'Juventus FC', crest: '⚪⚫' },
+  { id: 'inter', name: 'Inter Milan', crest: '🖤💙' },
+  { id: 'dortmund', name: 'Dortmund', crest: '💛' },
+  { id: 'chelsea', name: 'Chelsea FC', crest: '💙' },
+  { id: 'man-united', name: 'Man United', crest: '🔴👹' },
 ];
+
+const TOTAL_STEPS = 4; // 0=Splash, 1=Features, 2=Club, 3=Ready
+
+/* ────────────────────────────────────────────────────
+   Main Component
+   ──────────────────────────────────────────────────── */
 
 export default function FirstOpenFlow() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [experience, setExperience] = useState<Experience>('coach');
-  const [selectedClub, setSelectedClub] = useState<Club>(clubs[0]);
+  const [selectedClub, setSelectedClub] = useState<Club>(CLUBS[0]);
   const [search, setSearch] = useState('');
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
 
   useEffect(() => {
     if (hasCompletedOnboarding()) {
@@ -36,15 +44,21 @@ export default function FirstOpenFlow() {
   }, [navigate]);
 
   const filteredClubs = useMemo(() => {
-    const normalized = search.trim().toLowerCase();
-    if (!normalized) {
-      return clubs;
-    }
-    return clubs.filter((club) => club.name.toLowerCase().includes(normalized));
+    const q = search.trim().toLowerCase();
+    return q ? CLUBS.filter((c) => c.name.toLowerCase().includes(q)) : CLUBS;
   }, [search]);
 
+  const goNext = useCallback(() => {
+    setDirection('forward');
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+  }, []);
+
+  const goBack = useCallback(() => {
+    setDirection('back');
+    setStep((s) => Math.max(s - 1, 0));
+  }, []);
+
   const completeFlow = () => {
-    localStorage.setItem('dc_experience_mode', experience);
     localStorage.setItem('dc_favorite_club', selectedClub.id);
     markOnboardingCompleted();
     navigate('/login', { replace: true });
@@ -55,224 +69,363 @@ export default function FirstOpenFlow() {
     navigate('/login', { replace: true });
   };
 
-  const progressDots = (
-    <div className="flex gap-2">
-      {[0, 1, 2].map((idx) => (
-        <div key={idx} className={`h-1 rounded-full ${step - 1 === idx ? 'w-8 bg-[#4be277]' : 'w-8 bg-[#323537]'}`} />
+  /* ──── Progress Bar ──── */
+  const progressBar = (
+    <div className="flex gap-1.5 w-full max-w-[120px]">
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[3px] rounded-full flex-1 transition-all duration-500"
+          style={{
+            background: i <= step
+              ? 'linear-gradient(90deg, #22C55E, #4ADE80)'
+              : 'rgba(255,255,255,0.1)',
+            boxShadow: i <= step ? '0 0 6px rgba(34,197,94,0.4)' : 'none',
+          }}
+        />
       ))}
     </div>
   );
 
+  /* ──── Slide wrapper ──── */
+  const slideClass = direction === 'forward'
+    ? 'animate-[slideInRight_0.4s_ease-out]'
+    : 'animate-[slideInLeft_0.4s_ease-out]';
+
   return (
-    <div className="min-h-screen bg-[#101415] text-[#e0e3e5] font-['Inter']">
+    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-on-background)] font-['Inter'] overflow-hidden">
+      {/* Ambient glow */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-[var(--color-primary)] opacity-[0.06] blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-[var(--color-blue-accent)] opacity-[0.04] blur-[100px]" />
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          STEP 0 — SPLASH / HERO
+          ═══════════════════════════════════════════ */}
       {step === 0 && (
-        <main className="relative min-h-screen flex flex-col justify-end bg-cover bg-center" style={{ backgroundImage: `url(${background})` }}>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#101415] via-[#101415cc] to-[#10141544]" />
-          <div className="relative z-10 w-full max-w-[28rem] mx-auto px-5 pb-10 flex flex-col items-center text-center">
-            <div className="mb-6 flex flex-col items-center">
-              <div className="w-20 h-20 bg-[#10141599] backdrop-blur-md rounded-full flex items-center justify-center border border-[#3d4a3d] mb-4 shadow-[0_0_30px_rgba(75,226,119,0.15)]">
-                <span className="material-symbols-outlined text-[40px] text-[#4be277]" style={{ fontVariationSettings: "'FILL' 1" }}>sports_soccer</span>
+        <main className="relative min-h-screen flex flex-col animate-[fadeIn_0.6s_ease-out]">
+          {/* Background image */}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${background})` }}
+          />
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-background)]/40 to-transparent" />
+
+          {/* Content */}
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-end pb-12 px-6">
+            {/* Logo */}
+            <div className="mb-8 flex flex-col items-center">
+              <div
+                className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 border border-[var(--color-primary)]/30"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(8,22,43,0.9))',
+                  boxShadow: '0 0 40px rgba(34,197,94,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+                }}
+              >
+                <span
+                  className="material-symbols-outlined text-[42px] text-[var(--color-primary)]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  sports
+                </span>
               </div>
-              <h1 className="font-['Lexend'] text-3xl font-bold tracking-tight uppercase">DREAM COACH</h1>
-              <p className="text-base text-[#bccbb9] mt-2 max-w-[280px]">Be the Coach. Build Your Legacy.</p>
+
+              <h1 className="font-['Lexend'] text-4xl font-black tracking-tight uppercase text-white">
+                DREAM COACH
+              </h1>
+              <p className="text-[var(--color-on-surface-variant)] mt-2 text-base max-w-[280px] text-center leading-relaxed">
+                Build squads. Set tactics. Win matches.<br />
+                <span className="text-[var(--color-primary)] font-semibold">Your decisions shape the game.</span>
+              </p>
             </div>
-            <div className="flex gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-[#4be277] shadow-[0_0_8px_rgba(75,226,119,0.6)]" />
-              <div className="w-2 h-2 rounded-full bg-[#323537]" />
-              <div className="w-2 h-2 rounded-full bg-[#323537]" />
-            </div>
-            <div className="w-full flex flex-col gap-3">
-              <button onClick={() => setStep(1)} className="w-full bg-[#4be277] text-[#003915] py-4 rounded-xl font-['Lexend'] font-semibold uppercase tracking-wider shadow-[0_0_20px_rgba(75,226,119,0.3)]">Get Started</button>
-              <button onClick={skipFlow} className="w-full py-4 text-[#bccbb9] text-xs uppercase tracking-[0.16em]">Skip</button>
-            </div>
-          </div>
-        </main>
-      )}
 
-      {step === 1 && (
-        <main className="relative min-h-screen px-5 py-12 flex flex-col justify-between overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(75,226,119,0.15)_0%,rgba(16,20,21,1)_70%)]" />
-          <header className="relative z-10 flex justify-between items-center">
-            <span className="font-['Lexend'] text-xl italic font-black text-[#4be277] tracking-tight">STADIUM PRO</span>
-            {progressDots}
-          </header>
+            {/* Progress */}
+            <div className="mb-6">{progressBar}</div>
 
-          <section className="relative z-10 text-center mt-6">
-            <p className="text-[#4be277] text-sm">1/3</p>
-            <h2 className="font-['Lexend'] text-4xl mt-2 leading-tight">Build Your <span className="text-[#4be277]">Dream Team</span></h2>
-            <p className="text-[#bccbb9] mt-3">Choose from legends and stars. Create the ultimate squad.</p>
-          </section>
-
-          <section className="relative z-10 my-6 rounded-xl border border-[#3d4a3d] bg-[#10141599] backdrop-blur-xl p-4">
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              {['Neymar', 'Ronaldo', 'Messi', 'De Bruyne', 'Kroos', 'Casemiro', 'Davies', 'Hakimi'].map((name, idx) => (
-                <div key={name} className="rounded-lg border border-white/10 bg-[#1d2022] p-2">
-                  <p className="text-[#4be277] font-bold">{90 - (idx % 4)}</p>
-                  <p className="truncate mt-1">{name}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <div className="relative z-10 w-full flex flex-col gap-3 pb-3">
-            <button onClick={() => setStep(2)} className="w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Next</button>
-            <button onClick={skipFlow} className="text-[#bccbb9] text-xs uppercase tracking-[0.16em]">Skip</button>
-          </div>
-        </main>
-      )}
-
-      {step === 2 && (
-        <main className="relative min-h-screen px-5 py-12 flex flex-col justify-between overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(75,226,119,0.12)_0%,rgba(16,20,21,1)_70%)]" />
-          <header className="relative z-10 flex justify-between items-center">
-            <button onClick={() => setStep(1)} className="text-[#bccbb9]"><span className="material-symbols-outlined">arrow_back</span></button>
-            {progressDots}
-          </header>
-
-          <section className="relative z-10 flex-1 flex items-center justify-center my-6">
-            <div className="w-full aspect-[4/3] bg-[#10141599] backdrop-blur-xl rounded-xl border border-[#3d4a3d] p-4 relative overflow-hidden">
-              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/10 -translate-x-1/2" />
-              <div className="absolute top-1/2 left-1/2 w-16 h-16 rounded-full border border-white/10 -translate-x-1/2 -translate-y-1/2" />
-              <div className="absolute top-1/4 left-1/4 w-3 h-3 rounded-full bg-[#4be277] shadow-[0_0_10px_rgba(75,226,119,0.45)]" />
-              <div className="absolute bottom-1/3 right-1/4 w-3 h-3 rounded-full bg-[#4be277] shadow-[0_0_10px_rgba(75,226,119,0.45)]" />
-              <div className="absolute top-1/2 right-1/3 w-3 h-3 rounded-full bg-[#4be277] shadow-[0_0_10px_rgba(75,226,119,0.45)]" />
-              <div className="absolute left-4 right-4 bottom-4 rounded-lg bg-[#0b0f10cc] p-3">
-                <Metric name="Pressing" value={85} />
-                <Metric name="Possession" value={70} />
-                <Metric name="Attack Width" value={60} />
-                <Metric name="Defensive Line" value={70} />
-              </div>
-            </div>
-          </section>
-
-          <section className="relative z-10 text-center">
-            <h2 className="font-['Lexend'] text-4xl leading-tight">Create Tactics.<br /><span className="text-[#4be277]">Dominate Matches.</span></h2>
-            <p className="text-[#bccbb9] mt-3">Tactical control in your hands. Every decision matters.</p>
-            <button onClick={() => setStep(3)} className="mt-7 w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider flex items-center justify-center gap-2">Next <span className="material-symbols-outlined">arrow_forward</span></button>
-          </section>
-        </main>
-      )}
-
-      {step === 3 && (
-        <main className="min-h-screen px-5 py-10 flex flex-col">
-          <header className="flex justify-between items-center">
-            <button onClick={() => setStep(2)} className="text-[#bccbb9]"><span className="material-symbols-outlined">arrow_back</span></button>
-            <p className="text-sm text-[#bccbb9]">3/3</p>
-          </header>
-          <h2 className="font-['Lexend'] text-3xl mt-6">Live Match Insights</h2>
-          <p className="text-[#bccbb9] mt-2">Get tactical warnings and fatigue analysis before it is too late.</p>
-          <div className="mt-6 space-y-3">
-            <AlertCard type="HIGH" text="Left flank exposed. Opponent right winger getting too much space." />
-            <AlertCard type="MED" text="Midfield control dropped below 40%. Consider a defensive sub." />
-          </div>
-          <div className="mt-auto space-y-3 pb-3">
-            <button onClick={() => setStep(4)} className="w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Continue</button>
-            <button onClick={skipFlow} className="text-[#bccbb9] text-xs uppercase tracking-[0.16em] w-full">Skip</button>
-          </div>
-        </main>
-      )}
-
-      {step === 4 && (
-        <main className="min-h-screen px-5 py-10 flex flex-col">
-          <h2 className="text-center text-[#4be277] tracking-[0.16em] text-sm">WHY DREAM COACH?</h2>
-          <div className="grid grid-cols-2 gap-3 mt-7">
-            <WhyCard title="Be the Coach" text="Make the right decisions" icon="sports" />
-            <WhyCard title="Win & Achieve" text="Compete in challenges" icon="trophy" />
-            <WhyCard title="Analyze & Improve" text="AI insights to improve" icon="query_stats" />
-            <WhyCard title="Challenge Friends" text="Test tactics vs others" icon="groups" />
-          </div>
-          <div className="mt-auto space-y-3 pb-3">
-            <button onClick={() => setStep(5)} className="w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Continue</button>
-            <button onClick={skipFlow} className="text-[#bccbb9] text-xs uppercase tracking-[0.16em] w-full">Skip</button>
-          </div>
-        </main>
-      )}
-
-      {step === 5 && (
-        <main className="min-h-screen px-5 py-10 flex flex-col">
-          <header>
-            <button onClick={() => setStep(4)} className="text-[#bccbb9]"><span className="material-symbols-outlined">arrow_back</span></button>
-            <p className="text-[#bccbb9] mt-3 text-sm">CHOOSE YOUR EXPERIENCE</p>
-          </header>
-          <div className="mt-6 space-y-4">
-            <ExperienceCard active={experience === 'coach'} title="Coach Mode" text="Full tactical experience with analysis and competitions." onClick={() => setExperience('coach')} />
-            <ExperienceCard active={experience === 'casual'} title="Casual Mode" text="Quick matches and fun without pressure." onClick={() => setExperience('casual')} />
-          </div>
-          <button onClick={() => setStep(6)} className="mt-auto mb-3 w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Next</button>
-        </main>
-      )}
-
-      {step === 6 && (
-        <main className="min-h-screen px-5 py-10 flex flex-col">
-          <header>
-            <button onClick={() => setStep(5)} className="text-[#bccbb9]"><span className="material-symbols-outlined">arrow_back</span></button>
-            <p className="text-[#bccbb9] mt-3 text-sm">SELECT YOUR FAVORITE CLUB</p>
-          </header>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search for a club..." className="mt-4 w-full bg-[#191c1e] border border-[#3d4a3d] rounded-lg px-4 py-3 outline-none focus:border-[#4be277]" />
-          <div className="mt-4 grid grid-cols-2 gap-3 overflow-y-auto pr-1">
-            {filteredClubs.map((club) => (
-              <button key={club.id} onClick={() => setSelectedClub(club)} className={`rounded-lg border p-3 text-left ${selectedClub.id === club.id ? 'border-[#4be277] bg-[#4be2771a]' : 'border-[#3d4a3d] bg-[#1d2022]'}`}>
-                <div className="text-xl">{club.badge}</div>
-                <p className="mt-2 text-sm">{club.name}</p>
+            {/* Buttons */}
+            <div className="w-full flex flex-col gap-3" style={{ maxWidth: '384px' }}>
+              <button
+                onClick={goNext}
+                className="w-full py-4 rounded-2xl font-['Lexend'] font-bold uppercase tracking-wider text-[var(--color-on-primary)] transition-all active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                  boxShadow: '0 0 24px rgba(34,197,94,0.35), 0 4px 12px rgba(0,0,0,0.3)',
+                }}
+              >
+                Get Started
               </button>
-            ))}
+              <button
+                onClick={skipFlow}
+                className="w-full py-3 text-[var(--color-on-surface-variant)] text-xs uppercase tracking-[0.2em] hover:text-white transition-colors"
+              >
+                Skip for now
+              </button>
+            </div>
           </div>
-          <button onClick={() => setStep(7)} className="mt-auto mb-3 w-full bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Next</button>
         </main>
       )}
 
-      {step === 7 && (
-        <main className="min-h-screen px-5 py-10 flex flex-col items-center justify-center text-center">
-          <span className="material-symbols-outlined text-7xl text-[#4be277]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-          <h2 className="font-['Lexend'] text-4xl mt-5 text-[#4be277]">YOU'RE READY!</h2>
-          <p className="text-[#bccbb9] mt-3 max-w-[280px]">Your journey as a coach starts now.</p>
-          <button onClick={completeFlow} className="mt-10 w-full max-w-[24rem] bg-[#4be277] text-[#003915] py-4 rounded-lg font-['Lexend'] font-semibold uppercase tracking-wider">Let's Go!</button>
+      {/* ═══════════════════════════════════════════
+          STEP 1 — FEATURE HIGHLIGHTS (3 cards)
+          ═══════════════════════════════════════════ */}
+      {step === 1 && (
+        <main className={`relative min-h-screen flex flex-col px-6 py-8 ${slideClass}`}>
+          {/* Header */}
+          <header className="relative z-10 flex items-center justify-between mb-2">
+            <button onClick={goBack} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-[var(--color-on-surface-variant)]">arrow_back</span>
+            </button>
+            {progressBar}
+            <button onClick={skipFlow} className="text-[11px] text-[var(--color-on-surface-variant)] uppercase tracking-wider hover:text-white transition-colors">
+              Skip
+            </button>
+          </header>
+
+          {/* Title */}
+          <section className="relative z-10 text-center mt-6 mb-8">
+            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">How It Works</p>
+            <h2 className="font-['Lexend'] text-3xl font-bold leading-tight text-white">
+              Three Steps to<br /><span className="text-[var(--color-primary)]">Victory</span>
+            </h2>
+          </section>
+
+          {/* Feature Cards */}
+          <section className="relative z-10 flex-1 flex flex-col gap-4 mx-auto w-full" style={{ maxWidth: '480px' }}>
+            <FeatureCard
+              step="01"
+              icon="groups"
+              title="Build Your Squad"
+              description="Pick from 800+ real players. Choose your formation. Set your tactical identity."
+              gradient="from-[#22C55E]/20 to-transparent"
+              borderColor="border-[#22C55E]/20"
+              delay={0}
+            />
+            <FeatureCard
+              step="02"
+              icon="psychology"
+              title="Tactical Decisions"
+              description="Get real-time warnings during matches. Make substitutions when it matters most."
+              gradient="from-[#3B82F6]/20 to-transparent"
+              borderColor="border-[#3B82F6]/20"
+              delay={100}
+            />
+            <FeatureCard
+              step="03"
+              icon="analytics"
+              title="Learn & Improve"
+              description="AI-powered match reports explain exactly why you won or lost. Every decision counts."
+              gradient="from-[#F59E0B]/20 to-transparent"
+              borderColor="border-[#F59E0B]/20"
+              delay={200}
+            />
+          </section>
+
+          {/* Next */}
+          <div className="relative z-10 mt-8 w-full mx-auto" style={{ maxWidth: '480px' }}>
+            <button
+              onClick={goNext}
+              className="w-full py-4 rounded-2xl font-['Lexend'] font-bold uppercase tracking-wider text-[var(--color-on-primary)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                boxShadow: '0 0 24px rgba(34,197,94,0.3)',
+              }}
+            >
+              Continue
+              <span className="material-symbols-outlined text-xl">arrow_forward</span>
+            </button>
+          </div>
+        </main>
+      )}
+
+      {/* ═══════════════════════════════════════════
+          STEP 2 — PICK FAVORITE CLUB
+          ═══════════════════════════════════════════ */}
+      {step === 2 && (
+        <main className={`relative min-h-screen flex flex-col px-6 py-8 ${slideClass}`}>
+          {/* Header */}
+          <header className="relative z-10 flex items-center justify-between mb-2">
+            <button onClick={goBack} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-[var(--color-on-surface-variant)]">arrow_back</span>
+            </button>
+            {progressBar}
+            <button onClick={skipFlow} className="text-[11px] text-[var(--color-on-surface-variant)] uppercase tracking-wider hover:text-white transition-colors">
+              Skip
+            </button>
+          </header>
+
+          {/* Title */}
+          <section className="relative z-10 text-center mt-4 mb-6">
+            <p className="text-[var(--color-primary)] text-xs font-bold uppercase tracking-[0.2em] mb-3">Personalize</p>
+            <h2 className="font-['Lexend'] text-3xl font-bold leading-tight text-white">
+              Pick Your<br /><span className="text-[var(--color-primary)]">Favorite Club</span>
+            </h2>
+            <p className="text-[var(--color-on-surface-variant)] text-sm mt-2">This helps us personalize your experience</p>
+          </section>
+
+          {/* Search */}
+          <div className="relative z-10 mx-auto w-full mb-4" style={{ maxWidth: '480px' }}>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-on-surface-variant)] text-xl">search</span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search clubs..."
+                className="w-full bg-[var(--color-surface-container-high)] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm outline-none focus:border-[var(--color-primary)] transition-colors placeholder:text-[var(--color-on-surface-variant)]/50"
+              />
+            </div>
+          </div>
+
+          {/* Club Grid */}
+          <div className="relative z-10 flex-1 mx-auto w-full overflow-y-auto pr-1 custom-scrollbar" style={{ maxWidth: '480px' }}>
+            <div className="grid grid-cols-2 gap-3">
+              {filteredClubs.map((club) => {
+                const active = selectedClub.id === club.id;
+                return (
+                  <button
+                    key={club.id}
+                    onClick={() => setSelectedClub(club)}
+                    className={`relative rounded-xl border p-4 text-left transition-all duration-200 active:scale-[0.97] ${
+                      active
+                        ? 'border-[var(--color-primary)]/60 bg-[var(--color-primary)]/10'
+                        : 'border-white/5 bg-[var(--color-surface-container-high)] hover:border-white/15 hover:bg-[var(--color-surface-container-highest)]'
+                    }`}
+                  >
+                    {/* Active indicator */}
+                    {active && (
+                      <div className="absolute top-3 right-3">
+                        <span className="material-symbols-outlined text-[var(--color-primary)] text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      </div>
+                    )}
+                    <div className="text-2xl mb-2">{club.crest}</div>
+                    <p className={`text-sm font-semibold truncate ${active ? 'text-[var(--color-primary)]' : 'text-white'}`}>
+                      {club.name}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Next */}
+          <div className="relative z-10 mt-6 w-full mx-auto" style={{ maxWidth: '480px' }}>
+            <button
+              onClick={goNext}
+              className="w-full py-4 rounded-2xl font-['Lexend'] font-bold uppercase tracking-wider text-[var(--color-on-primary)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                boxShadow: '0 0 24px rgba(34,197,94,0.3)',
+              }}
+            >
+              Continue
+              <span className="material-symbols-outlined text-xl">arrow_forward</span>
+            </button>
+          </div>
+        </main>
+      )}
+
+      {/* ═══════════════════════════════════════════
+          STEP 3 — READY / FINAL
+          ═══════════════════════════════════════════ */}
+      {step === 3 && (
+        <main className={`relative min-h-screen flex flex-col items-center justify-center px-6 ${slideClass}`}>
+          {/* Background glow */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full opacity-20 blur-[80px]"
+            style={{ background: 'radial-gradient(circle, #22C55E, transparent)' }}
+          />
+
+          {/* Icon */}
+          <div
+            className="w-24 h-24 rounded-3xl flex items-center justify-center mb-8 border border-[var(--color-primary)]/30 animate-[scaleIn_0.5s_ease-out]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.05))',
+              boxShadow: '0 0 60px rgba(34,197,94,0.25)',
+            }}
+          >
+            <span
+              className="material-symbols-outlined text-6xl text-[var(--color-primary)]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              verified
+            </span>
+          </div>
+
+          {/* Text */}
+          <h2 className="font-['Lexend'] text-4xl font-black text-white text-center mb-3 animate-[fadeInUp_0.5s_ease-out_0.15s_both]">
+            YOU'RE READY<span className="text-[var(--color-primary)]">!</span>
+          </h2>
+          <p className="text-[var(--color-on-surface-variant)] text-center max-w-[300px] leading-relaxed mb-2 animate-[fadeInUp_0.5s_ease-out_0.25s_both]">
+            Your journey as a Dream Coach starts now.
+          </p>
+          <p className="text-[var(--color-primary)] text-sm font-semibold text-center mb-10 animate-[fadeInUp_0.5s_ease-out_0.3s_both]">
+            Build. Manage. Win. 🏆
+          </p>
+
+          {/* CTA */}
+          <div className="w-full animate-[fadeInUp_0.5s_ease-out_0.4s_both]" style={{ maxWidth: '384px' }}>
+            <button
+              onClick={completeFlow}
+              className="w-full py-4 rounded-2xl font-['Lexend'] font-bold uppercase tracking-wider text-[var(--color-on-primary)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                boxShadow: '0 0 30px rgba(34,197,94,0.4), 0 8px 24px rgba(0,0,0,0.3)',
+              }}
+            >
+              Let's Go
+              <span className="material-symbols-outlined text-xl">rocket_launch</span>
+            </button>
+          </div>
         </main>
       )}
     </div>
   );
 }
 
-function Metric({ name, value }: { name: string; value: number }) {
+/* ────────────────────────────────────────────────────
+   Sub-components
+   ──────────────────────────────────────────────────── */
+
+function FeatureCard({
+  step,
+  icon,
+  title,
+  description,
+  gradient,
+  borderColor,
+  delay,
+}: {
+  step: string;
+  icon: string;
+  title: string;
+  description: string;
+  gradient: string;
+  borderColor: string;
+  delay: number;
+}) {
   return (
-    <div className="flex items-center gap-3 mb-2 last:mb-0">
-      <span className="text-xs uppercase tracking-wide text-[#bccbb9] w-[98px]">{name}</span>
-      <div className="h-1 flex-1 rounded-full bg-[#323537] overflow-hidden">
-        <div className="h-full bg-[#4be277]" style={{ width: `${value}%` }} />
+    <div
+      className={`rounded-2xl border ${borderColor} p-5 bg-gradient-to-r ${gradient} backdrop-blur-sm relative overflow-hidden transition-all hover:scale-[1.01]`}
+      style={{ animationDelay: `${delay}ms`, animation: 'fadeInUp 0.5s ease-out both' }}
+    >
+      {/* Step number accent */}
+      <div className="absolute top-4 right-4 text-[40px] font-['Lexend'] font-black text-white/[0.03] leading-none">
+        {step}
       </div>
-      <span className="text-xs text-[#bccbb9] w-6 text-right">{value}</span>
-    </div>
-  );
-}
 
-function AlertCard({ type, text }: { type: 'HIGH' | 'MED'; text: string }) {
-  const color = type === 'HIGH' ? 'border-[#ffb4ab] text-[#ffb4ab]' : 'border-[#F59E0B] text-[#F59E0B]';
-  return (
-    <div className={`rounded-lg border bg-[#1d2022] p-4 ${color}`}>
-      <p className="text-xs tracking-[0.14em]">{type}</p>
-      <p className="mt-1 text-sm text-[#e0e3e5]">{text}</p>
-    </div>
-  );
-}
-
-function WhyCard({ title, text, icon }: { title: string; text: string; icon: string }) {
-  return (
-    <div className="rounded-lg border border-[#3d4a3d] bg-[#1d2022] p-4 text-center">
-      <span className="material-symbols-outlined text-[#4be277]">{icon}</span>
-      <h3 className="mt-2 font-['Lexend'] text-sm">{title}</h3>
-      <p className="text-xs text-[#bccbb9] mt-1">{text}</p>
-    </div>
-  );
-}
-
-function ExperienceCard({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className={`w-full rounded-xl border p-4 text-left ${active ? 'border-[#4be277] bg-[#4be27714]' : 'border-[#3d4a3d] bg-[#1d2022]'}`}>
-      <div className="flex items-center justify-between">
-        <h3 className="font-['Lexend'] text-lg">{title}</h3>
-        <div className={`w-5 h-5 rounded-full border ${active ? 'border-[#4be277] bg-[#4be277]' : 'border-[#869585]'}`} />
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {icon}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-['Lexend'] text-base font-bold text-white mb-1">{title}</h3>
+          <p className="text-[var(--color-on-surface-variant)] text-sm leading-relaxed">{description}</p>
+        </div>
       </div>
-      <p className="text-sm text-[#bccbb9] mt-2">{text}</p>
-    </button>
+    </div>
   );
 }

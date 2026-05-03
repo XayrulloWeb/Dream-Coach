@@ -1,14 +1,84 @@
-export type TacticalStyle = 'BALANCED' | 'HIGH_PRESS' | 'COUNTER' | 'POSSESSION' | 'LOW_BLOCK';
 export type WorkRate = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type TacticalStyle =
+  | 'BALANCED'
+  | 'HIGH_PRESS'
+  | 'COUNTER'
+  | 'POSSESSION'
+  | 'LOW_BLOCK';
+
 export type Zone = 'left' | 'center' | 'right';
 
-export type SimulationPlayer = {
+// ===== Core Engine 3.0: Zone Vectors =====
+export type ZoneVector = {
+  attack: number;
+  defense: number;
+  control: number;
+  transitionRisk: number;
+};
+
+export type ZoneGrid = {
+  leftAttack: ZoneVector;
+  centerAttack: ZoneVector;
+  rightAttack: ZoneVector;
+  leftMidfield: ZoneVector;
+  centerMidfield: ZoneVector;
+  rightMidfield: ZoneVector;
+  leftDefense: ZoneVector;
+  centerDefense: ZoneVector;
+  rightDefense: ZoneVector;
+};
+
+// ===== Core Engine 3.0: Position Fit Split =====
+export type PositionFitResult = {
+  overallFit: number;
+  attackingFit: number;
+  defensiveFit: number;
+};
+
+// ===== Core Engine 3.0: Player Roles =====
+export type PlayerRole =
+  | 'POACHER' | 'PRESSING_FORWARD' | 'COMPLETE_FORWARD' | 'FALSE_NINE' | 'TARGET_MAN'
+  | 'INSIDE_FORWARD' | 'WIDE_PLAYMAKER' | 'TRADITIONAL_WINGER'
+  | 'DEEP_PLAYMAKER' | 'BOX_TO_BOX' | 'BALL_WINNER' | 'ADVANCED_PLAYMAKER'
+  | 'ANCHOR' | 'MEZZALA'
+  | 'INVERTED_FULLBACK' | 'OVERLAPPING_FULLBACK' | 'DEFENSIVE_FULLBACK'
+  | 'BALL_PLAYING_CB' | 'STOPPER'
+  | 'SWEEPER_KEEPER' | 'SHOT_STOPPER'
+  | 'DEFAULT';
+
+// ===== Core Engine 3.0: Match Momentum =====
+export type MoraleLevel = 'HIGH' | 'NEUTRAL' | 'LOW';
+
+export type MatchMomentum = {
+  homeScoreDiff: number;
+  minute: number;
+  homeMorale: MoraleLevel;
+  awayMorale: MoraleLevel;
+  momentumSwing: number; // -10 to +10, positive = home momentum
+};
+
+// ===== Core Engine 3.0: Tactical Rule Engine =====
+export type TacticalRuleEffect = {
+  controlDelta?: number;
+  chanceCreationDelta?: number;
+  defensiveWallDelta?: number;
+  transitionDefenseDelta?: number;
+  pressingPowerDelta?: number;
+  flankSecurityLeftDelta?: number;
+  flankSecurityRightDelta?: number;
+  opponentChanceBoost?: number;
+  vulnerability?: string;
+};
+
+export type PlayerInput = {
   id: string;
   name: string;
   naturalPosition: string;
   rolePosition: string;
-  preferredPositions: string[];
+  preferredPositions?: string[];
   isSubstitute?: boolean;
+  role?: PlayerRole;
   pac: number;
   sho: number;
   pas: number;
@@ -20,17 +90,40 @@ export type SimulationPlayer = {
   defenseWorkRate: WorkRate;
 };
 
-export type SimulationTeam = {
+export type TeamInput = {
   name: string;
   formation: string;
   tacticalStyle: TacticalStyle;
-  players: SimulationPlayer[];
+  players: PlayerInput[];
 };
 
-export type SimulationPayload = {
-  team: SimulationTeam;
-  opponent?: SimulationTeam;
-  venue?: 'HOME' | 'AWAY' | 'NEUTRAL';
+export type TeamRatings = {
+  control: number;
+  chanceCreation: number;
+  defensiveWall: number;
+  transitionDefense: number;
+  pressingPower: number;
+  flankSecurity: Record<Zone, number>;
+  attackingThreat: Record<Zone, number>;
+  vulnerabilities: string[];
+  // Core Engine 3.0 additions
+  zoneGrid?: ZoneGrid;
+  appliedRules?: string[];
+};
+
+export type MatchIssue = {
+  type: 'STAMINA_CRITICAL' | 'TACTICAL_VULNERABILITY' | 'MIDFIELD_LOSS' | 'TRANSITION_ALERT';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  player?: string;
+  zone?: Zone | 'MIDFIELD';
+  message: string;
+  suggestedActions: string[];
+};
+
+export type MidMatchInsight = {
+  minute: number;
+  score: string;
+  issues: MatchIssue[];
 };
 
 export type MatchEvent = {
@@ -38,8 +131,8 @@ export type MatchEvent = {
   team: 'HOME' | 'AWAY' | 'SYSTEM';
   type: 'GOAL' | 'SHOT' | 'CARD' | 'INJURY' | 'TACTICAL_WARNING' | 'INSIGHT';
   message: string;
-  player?: string;
   zone?: Zone;
+  player?: string;
 };
 
 export type TeamMatchStats = {
@@ -50,29 +143,23 @@ export type TeamMatchStats = {
   bigChances: number;
 };
 
-export type MatchIssue = {
-  type: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH';
-  zone?: string;
-  player?: string;
-  message: string;
-  suggestedActions: string[];
-  evidence?: {
-    zone?: string;
-    opponentAttacksFromZone?: number;
-    successfulOpponentAttacks?: number;
-    playerStamina?: Record<string, number>;
-    workRateMismatch?: boolean;
-  };
+export type SimulationInput = {
+  team: TeamInput;
+  opponent?: TeamInput;
+  venue?: 'HOME' | 'AWAY' | 'NEUTRAL';
+  realismFactor?: number; // 0.0 to 1.0, default 0.85 (85% logic, 15% noise)
 };
 
-export type MatchInsight = {
-  minute: number;
-  score: string;
-  issues: MatchIssue[];
+export type SimulationCalibration = {
+  attackFrequencyMultiplier: number;
+  goalProbabilityMultiplier: number;
+  bigChanceMultiplier: number;
+  cardRateMultiplier: number;
+  injuryRateMultiplier: number;
+  zoneBias: Record<Zone, number>;
 };
 
-export type SimulationResponse = {
+export type SimulationResult = {
   score: {
     home: number;
     away: number;
@@ -82,18 +169,39 @@ export type SimulationResponse = {
     away: TeamMatchStats;
   };
   ratings: {
-    home: {
-      vulnerabilities: string[];
-    };
-    away?: {
-      vulnerabilities: string[];
-    };
+    home: TeamRatings;
+    away: TeamRatings;
   };
-  insights: MatchInsight[];
+  insights: MidMatchInsight[];
   events: MatchEvent[];
 };
 
 export type MatchStatus = 'PRE_MATCH' | 'PAUSED_FOR_COACH' | 'FINISHED';
+
+export type Evidence = {
+  zone?: Zone | 'MIDFIELD';
+  opponentAttacksFromZone?: number;
+  successfulOpponentAttacks?: number;
+  playerStamina?: Record<string, number>;
+  workRateMismatch?: boolean;
+};
+
+export type ExplainableIssue = MatchIssue & {
+  evidence?: Evidence;
+};
+
+export type ExplainableInsight = Omit<MidMatchInsight, 'issues'> & {
+  issues: ExplainableIssue[];
+};
+
+export type TeamVectors = {
+  control: number;
+  chanceCreation: number;
+  defensiveWall: number;
+  leftFlankRisk: number;
+  rightFlankRisk: number;
+  pressingPower: number;
+};
 
 export type SubstitutionAction = {
   playerOutId: string;
@@ -101,7 +209,7 @@ export type SubstitutionAction = {
   newRolePosition?: string;
 };
 
-export type StartMatchResponse = {
+export type MatchStateSnapshot = {
   matchId: string;
   minute: number;
   status: MatchStatus;
@@ -113,52 +221,55 @@ export type StartMatchResponse = {
     home: TeamMatchStats;
     away: TeamMatchStats;
   };
-  ratings: SimulationResponse['ratings'];
+  ratings: {
+    home: TeamRatings;
+    away: TeamRatings;
+  };
   events: MatchEvent[];
-  insights: MatchInsight[];
+  insights: ExplainableInsight[];
+};
+
+export type MatchStartResponse = MatchStateSnapshot & {
   suggestedActions: SubstitutionAction[];
 };
 
-export type SubstitutionResponse = {
+export type TacticalImpactPreview = {
+  before: TeamVectors;
+  after: TeamVectors;
+  deltas: {
+    controlDelta: number;
+    chanceCreationDelta: number;
+    defenseDelta: number;
+    leftRiskDelta: number;
+    rightRiskDelta: number;
+    pressingDelta: number;
+  };
+};
+
+export type MatchSubstitutionResponse = {
   matchId: string;
   minute: number;
   status: MatchStatus;
-  impactPreview: {
-    before: {
-      control: number;
-      chanceCreation: number;
-      defensiveWall: number;
-      leftFlankRisk: number;
-      rightFlankRisk: number;
-      pressingPower: number;
-    };
-    after: {
-      control: number;
-      chanceCreation: number;
-      defensiveWall: number;
-      leftFlankRisk: number;
-      rightFlankRisk: number;
-      pressingPower: number;
-    };
-    deltas: {
-      controlDelta: number;
-      chanceCreationDelta: number;
-      defenseDelta: number;
-      leftRiskDelta: number;
-      rightRiskDelta: number;
-      pressingDelta: number;
-    };
-  };
-  team: SimulationTeam;
+  impactPreview: TacticalImpactPreview;
+  team: TeamInput;
 };
 
 export type PlayerMatchRating = {
   playerId: string;
-  playerName: string;
-  team: 'HOME' | 'AWAY';
+  name: string;
+  position: string;
   rating: number;
-  goals: number;
-  assists: number;
+  minutesPlayed: number;
+  stats: {
+    goals: number;
+    assists: number;
+    shots: number;
+    keyPasses: number;
+    tackles: number;
+    interceptions: number;
+    saves?: number;
+  };
+  ratingReasons: string[];
 };
 
 export type MatchGoalSummary = {
@@ -170,14 +281,33 @@ export type MatchGoalSummary = {
   chanceQuality: number;
 };
 
-export type MatchFinalReport = SimulationResponse & {
+export type MatchFinalReport = SimulationResult & {
   status: MatchStatus;
   playerRatings: PlayerMatchRating[];
   goals: MatchGoalSummary[];
-  mvp: PlayerMatchRating | null;
+  mvp: {
+    playerId: string;
+    name: string;
+    rating: number;
+    reason: string;
+  } | null;
+  tacticalSummary: {
+    whatWorked: string[];
+    whatFailed: string[];
+    keyDecision?: string;
+    nextMatchAdvice: string[];
+  };
+  coachCard?: {
+    title: string;
+    score: string;
+    formation: string;
+    mvp: { name: string; rating: number } | null;
+    keyDecision: string;
+    tacticalTag: string;
+  };
 };
 
-export type ResumeMatchResponse = {
+export type MatchResumeResponse = {
   matchId: string;
   minute: number;
   status: MatchStatus;
@@ -188,7 +318,7 @@ export type MatchPausedStateResponse = {
   matchId: string;
   minute: number;
   status: 'PAUSED_FOR_COACH';
-  pauseState: StartMatchResponse;
+  pauseState: MatchStartResponse;
 };
 
 export type MatchFinishedStateResponse = {
