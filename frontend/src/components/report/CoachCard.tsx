@@ -1,6 +1,6 @@
-﻿import type { MatchFinalReport } from '../../types/simulation';
+import type { MatchFinalReport } from '../../types/simulation';
 
-export default function CoachCard({ report, onSave }: { report: MatchFinalReport, onSave: () => void }) {
+export default function CoachCard({ report, onSave, onShare }: { report: MatchFinalReport, onSave: () => void, onShare?: () => void }) {
   if (!report.coachCard) return null;
 
   return (
@@ -47,13 +47,24 @@ export default function CoachCard({ report, onSave }: { report: MatchFinalReport
         </div>
       </div>
 
-      <button
-        onClick={onSave}
-        className="w-full flex items-center justify-center gap-2 glass-panel hover:bg-[var(--color-surface-container-high)] p-3 rounded-xl border border-[var(--color-primary)]/30 text-[var(--color-primary)] transition-colors active:scale-95"
-      >
-        <span className="material-symbols-outlined text-xl">download</span>
-        <span className="text-[10px] uppercase tracking-wider font-bold">Сохранить карточку как изображение</span>
-      </button>
+      <div className="w-full grid grid-cols-2 gap-3 mt-4">
+        {onShare && (
+          <button
+            onClick={onShare}
+            className="flex items-center justify-center gap-2 glass-panel hover:bg-[var(--color-surface-container-high)] p-3 rounded-xl border border-[var(--color-blue-accent)]/30 text-[var(--color-blue-accent)] transition-colors active:scale-95"
+          >
+            <span className="material-symbols-outlined text-xl">share</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold">Поделиться</span>
+          </button>
+        )}
+        <button
+          onClick={onSave}
+          className="flex items-center justify-center gap-2 glass-panel hover:bg-[var(--color-surface-container-high)] p-3 rounded-xl border border-[var(--color-primary)]/30 text-[var(--color-primary)] transition-colors active:scale-95"
+        >
+          <span className="material-symbols-outlined text-xl">download</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Скачать</span>
+        </button>
+      </div>
     </section>
   );
 }

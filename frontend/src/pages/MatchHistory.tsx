@@ -1,5 +1,4 @@
-﻿import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import AppShell from '../components/AppShell';
 import { api, toApiError } from '../lib/api';
 
@@ -14,7 +13,6 @@ interface MatchHistoryItem {
 }
 
 export default function MatchHistory() {
-  const navigate = useNavigate();
   const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,23 +46,13 @@ export default function MatchHistory() {
   }, []);
 
   return (
-    <AppShell title="История матчей" activeTab="home" hideHeader>
-      <header className="w-full z-40 bg-[var(--color-surface)] border-b border-white/5 pt-safe sticky top-0">
-        <div className="flex items-center px-5 py-4">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full mr-3"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          </button>
-          <div>
-            <h1 className="font-['Lexend'] text-lg text-white">История матчей</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Прошлые результаты</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="px-5 py-6">
+    <AppShell
+      title="История матчей"
+      headerSubtitle="Прошлые результаты"
+      showBackButton
+      activeTab="home"
+      contentClassName="px-5 py-6"
+    >
         {loading ? (
           <div className="flex justify-center p-10">
             <div className="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
@@ -111,7 +99,6 @@ export default function MatchHistory() {
             })}
           </div>
         )}
-      </div>
     </AppShell>
   );
 }

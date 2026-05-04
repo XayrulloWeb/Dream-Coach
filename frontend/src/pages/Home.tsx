@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { loadSquadPayload } from '../lib/squad';
@@ -58,36 +58,38 @@ export default function Home() {
     : 0;
 
   return (
-    <AppShell title="Dream Coach" activeTab="home" hideHeader>
-      <header className="w-full z-40 bg-transparent pt-safe mb-2 animate-fade-in-down">
-        <div className="flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full border border-[var(--color-primary)]/50 bg-[var(--color-surface-container)] flex items-center justify-center neon-glow">
-              <span className="material-symbols-outlined text-[var(--color-primary)] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                sports_soccer
-              </span>
-            </div>
-            <div>
-              <p className="text-[10px] text-[var(--color-primary)] tracking-[0.18em] uppercase font-bold">Dream Coach</p>
-              <p className="text-sm text-[var(--color-on-surface-variant)] font-medium mt-0.5">Элитный дивизион</p>
-            </div>
+    <AppShell
+      title="Dream Coach"
+      activeTab="home"
+      headerVariant="transparent"
+      headerLeftElement={
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full border border-[var(--color-primary)]/50 bg-[var(--color-surface-container)] flex items-center justify-center neon-glow">
+            <span className="material-symbols-outlined text-[var(--color-primary)] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              sports_soccer
+            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={() => navigate('/profile')}
-            className="h-11 w-11 rounded-full overflow-hidden border-2 border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors shadow-[0_0_15px_rgba(34,197,94,0.15)]"
-          >
-            <img
-              alt="Профиль тренера"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuADD6abTEPgXscS6PNdp5KldcuYittHdY8udopx6Tbqw5-z-5OSrNkVQ-uhS4cNzoewoKJig5_Tx-ets-UDwO9zk26aVF9mmm3CgVAvfI3wme_OvlnPmZt0xrXFluxORdvA0xzZpdVkzaxECw_ZgdKDAdsDNTqToo_f99DUNAW2Qkw2PSlePCgJHSBOmA_X_tO2ltz_7wfVLv-TJm-Q3HoOlFeeCTDKj6t-6HdfdRNHo2VT9yR50TMPX3YnkrjxxvYzrbmop4GIi4s"
-            />
-          </button>
+          <div>
+            <p className="text-[10px] text-[var(--color-primary)] tracking-[0.18em] uppercase font-bold">Dream Coach</p>
+            <p className="text-sm text-[var(--color-on-surface-variant)] font-medium mt-0.5">Элитный дивизион</p>
+          </div>
         </div>
-      </header>
-
-      <div className="px-5 space-y-6">
+      }
+      headerRightElement={
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="h-11 w-11 rounded-full overflow-hidden border-2 border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors shadow-[0_0_15px_rgba(34,197,94,0.15)]"
+        >
+          <img
+            alt="Профиль тренера"
+            className="w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuADD6abTEPgXscS6PNdp5KldcuYittHdY8udopx6Tbqw5-z-5OSrNkVQ-uhS4cNzoewoKJig5_Tx-ets-UDwO9zk26aVF9mmm3CgVAvfI3wme_OvlnPmZt0xrXFluxORdvA0xzZpdVkzaxECw_ZgdKDAdsDNTqToo_f99DUNAW2Qkw2PSlePCgJHSBOmA_X_tO2ltz_7wfVLv-TJm-Q3HoOlFeeCTDKj6t-6HdfdRNHo2VT9yR50TMPX3YnkrjxxvYzrbmop4GIi4s"
+          />
+        </button>
+      }
+      contentClassName="px-5 space-y-6"
+    >
         <section className="glass-panel-solid rounded-3xl p-6 relative overflow-hidden animate-slide-up animate-delay-1">
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-[var(--color-primary)]/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -230,7 +232,6 @@ export default function Home() {
             )}
           </div>
         </section>
-      </div>
     </AppShell>
   );
 }

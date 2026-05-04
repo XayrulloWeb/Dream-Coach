@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MobileBottomNav from '../components/MobileBottomNav';
+import AppShell from '../components/AppShell';
 import { toApiError } from '../lib/api';
 import { fetchSavedSquads, removeSavedSquad, type SavedSquadRecord } from '../lib/squadsApi';
 import { loadSavedSquads } from '../lib/savedSquads';
@@ -81,61 +81,56 @@ export default function SavedSquadsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050A15] text-white pb-24">
-      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-4">
-        <header className="flex items-center justify-between">
-          <button onClick={() => navigate('/dashboard')} className="text-slate-300">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">СОХРАНЕННЫЕ СОСТАВЫ</h1>
-          <span className="text-xs text-slate-400">{total}</span>
-        </header>
-
-        {loading ? (
-          <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
-            <p className="text-sm text-slate-400">Загрузка составов...</p>
-          </section>
-        ) : items.length ? (
-          <section className="space-y-2">
-            {items.map((squad) => (
-              <div key={squad.id} className="rounded-xl border border-white/10 bg-[#08162B]/90 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold truncate">{squad.name}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {squad.formation} • {squad.tacticalStyle} • OVR {squad.averageRating}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onЗагрузить(squad.payload, squad.name)}
-                      className="rounded-md border border-emerald-500/70 px-3 py-1 text-xs text-emerald-300"
-                    >
-                      Загрузить
-                    </button>
-                    <button
-                      onClick={() => void onУдалить(squad.id)}
-                      className="rounded-md border border-rose-500/60 px-3 py-1 text-xs text-rose-300"
-                    >
-                      Удалить
-                    </button>
-                  </div>
+    <AppShell
+      title="СОХРАНЕННЫЕ СОСТАВЫ"
+      showBackButton
+      backTo="/dashboard"
+      activeTab="squad"
+      headerRightElement={<span className="text-xs text-slate-400 font-bold px-2">{total}</span>}
+      contentClassName="px-4 space-y-4 pt-4"
+    >
+      {loading ? (
+        <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
+          <p className="text-sm text-slate-400">Загрузка составов...</p>
+        </section>
+      ) : items.length ? (
+        <section className="space-y-2">
+          {items.map((squad) => (
+            <div key={squad.id} className="rounded-xl border border-white/10 bg-[#08162B]/90 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{squad.name}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {squad.formation} • {squad.tacticalStyle} • OVR {squad.averageRating}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onЗагрузить(squad.payload, squad.name)}
+                    className="rounded-md border border-emerald-500/70 px-3 py-1 text-xs text-emerald-300"
+                  >
+                    Загрузить
+                  </button>
+                  <button
+                    onClick={() => void onУдалить(squad.id)}
+                    className="rounded-md border border-rose-500/60 px-3 py-1 text-xs text-rose-300"
+                  >
+                    Удалить
+                  </button>
                 </div>
               </div>
-            ))}
-          </section>
-        ) : (
-          <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
-            <p className="text-sm text-slate-400">Пока нет сохраненных составов.</p>
-          </section>
-        )}
+            </div>
+          ))}
+        </section>
+      ) : (
+        <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
+          <p className="text-sm text-slate-400">Пока нет сохраненных составов.</p>
+        </section>
+      )}
 
-        {error ? <p className="text-xs text-amber-300">Предупреждение API: {error}</p> : null}
-        {message ? <p className="text-xs text-emerald-300">{message}</p> : null}
-      </main>
-
-      <MobileBottomNav active="squad" />
-    </div>
+      {error ? <p className="text-xs text-amber-300">Предупреждение API: {error}</p> : null}
+      {message ? <p className="text-xs text-emerald-300">{message}</p> : null}
+    </AppShell>
   );
 }
 

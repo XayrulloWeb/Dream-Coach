@@ -12,6 +12,7 @@ import type {
   MatchStateResponse,
   MatchEvent,
   MatchFinalReport,
+  PlayerPauseState,
   ResumeMatchResponse,
   SimulationPayload,
   StartMatchResponse,
@@ -468,7 +469,7 @@ export default function LiveMatch() {
           </section>
 
           {/* Squad Fatigue */}
-          <FatiguePanel players={starters} currentMinute={currentMinute} />
+          <FatiguePanel players={starters} currentMinute={currentMinute} playerStates={pauseState?.playerStates} />
         </div>
 
           {/* Events Timeline */}
@@ -591,28 +592,47 @@ function signed(value: number): string {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
-function FatiguePanel({ players, currentMinute }: { players: any[], currentMinute: number }) {
+function FatiguePanel({ players, currentMinute, playerStates }: { players: any[], currentMinute: number, playerStates?: PlayerPauseState[] }) {
+  const stateMap = new Map(playerStates?.map((s) => [s.playerId, s]) ?? []);
+
   return (
     <section className="glass-panel rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold">Усталость Состава</p>
+        {playerStates && playerStates.length > 0 && (
+          <span className="text-[9px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Live Engine</span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] sm:max-h-none overflow-y-auto custom-scrollbar pr-1">
         {players.map(p => {
-          const workrateDrop = p.attackWorkRate === 'HIGH' || p.defenseWorkRate === 'HIGH' ? 45 : (p.attackWorkRate === 'LOW' && p.defenseWorkRate === 'LOW' ? 25 : 35);
-          const currentStamina = Math.max(0, Math.round(p.stamina - (currentMinute / 90) * workrateDrop));
-          const color = currentStamina < 40 ? 'text-[var(--color-danger)]' : currentStamina < 70 ? 'text-[var(--color-warning)]' : 'text-[var(--color-primary)]';
-          const bgColor = currentStamina < 40 ? 'bg-[var(--color-danger)]' : currentStamina < 70 ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-primary)]';
+          const realState = stateMap.get(p.id);
+          // Use real engine data if available, otherwise fallback to estimate
+          const currentStamina = realState
+            ? realState.stamina
+            : Math.max(0, Math.round(p.stamina - (currentMinute / 90) * 35));
+          const rating = realState?.rating;
+          const status = realState?.status;
+          const reasons = realState?.reasons ?? [];
+
+          const color = currentStamina < 35 ? 'text-[var(--color-danger)]' : currentStamina < 50 ? 'text-[var(--color-warning)]' : currentStamina < 70 ? 'text-[var(--color-on-surface-variant)]' : 'text-[var(--color-primary)]';
+          const bgColor = currentStamina < 35 ? 'bg-[var(--color-danger)]' : currentStamina < 50 ? 'bg-[var(--color-warning)]' : currentStamina < 70 ? 'bg-yellow-500/70' : 'bg-[var(--color-primary)]';
+          const statusLabel = status === 'CRITICAL' ? '🔴' : status === 'TIRED' ? '🟡' : status === 'OK' ? '🟢' : '💚';
 
           return (
-            <div key={p.id} className="flex flex-col justify-center bg-[var(--color-surface-container-high)] border border-white/5 p-2 rounded">
+            <div key={p.id} className="flex flex-col justify-center bg-[var(--color-surface-container-high)] border border-white/5 p-2 rounded" title={reasons.join(' | ')}>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] text-white font-bold truncate">{p.name}</span>
+                <span className="text-[10px] text-white font-bold truncate">{statusLabel} {p.name}</span>
                 <span className={`text-[10px] font-bold ${color}`}>{currentStamina}%</span>
               </div>
               <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div className={`h-full ${bgColor} transition-all duration-300`} style={{ width: `${currentStamina}%` }} />
               </div>
+              {rating !== undefined && (
+                <div className="flex justify-between mt-1">
+                  <span className="text-[9px] text-[var(--color-on-surface-variant)]">{p.rolePosition ?? p.id?.toUpperCase()}</span>
+                  <span className={`text-[9px] font-bold ${rating >= 7 ? 'text-[var(--color-primary)]' : rating < 6 ? 'text-[var(--color-danger)]' : 'text-white'}`}>{rating.toFixed(1)}</span>
+                </div>
+              )}
             </div>
           );
         })}

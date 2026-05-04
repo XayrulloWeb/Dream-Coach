@@ -5,11 +5,13 @@ import {
   MidMatchInsight,
   PlayerInput,
   PlayerRole,
+  PlayerStaminaEntry,
   PositionFitResult,
   SimulationCalibration,
   SimulationInput,
   SimulationResult,
   TacticalStyle,
+  TacticsConfig,
   TeamInput,
   TeamRatings,
   WorkRate,
@@ -30,6 +32,7 @@ export type TeamRuntime = {
   tacticalStyle: TacticalStyle;
   players: PlayerRuntime[];
   ratings: TeamRatings;
+  tacticsConfig?: TacticsConfig;
 };
 
 type MutableMatchStats = {
@@ -83,7 +86,7 @@ export function simulateMatch(
     },
   };
 
-  const homeTeam = createTeamRuntime(input.team);
+  const homeTeam = createTeamRuntime(input.team, input.tacticsConfig);
   const awayTeam = createTeamRuntime(input.opponent ?? createDefaultOpponent());
   const venue = input.venue ?? 'HOME';
 
@@ -110,6 +113,7 @@ export function simulateMatch(
 
   const events: MatchEvent[] = [];
   const insights: MidMatchInsight[] = [];
+  let staminaSnapshot: PlayerStaminaEntry[] | undefined;
 
   // Столп 7: Match Momentum
   const momentum: MatchMomentum = {
@@ -130,7 +134,7 @@ export function simulateMatch(
     momentum.homeMorale = momentum.homeScoreDiff <= -2 ? 'LOW' : momentum.homeScoreDiff >= 2 ? 'HIGH' : 'NEUTRAL';
     momentum.awayMorale = momentum.homeScoreDiff >= 2 ? 'LOW' : momentum.homeScoreDiff <= -2 ? 'HIGH' : 'NEUTRAL';
 
-    applyMinuteStaminaDrain(homeTeam, minute);
+    applyMinuteStaminaDrain(homeTeam, minute, homeTeam.tacticsConfig);
     applyMinuteStaminaDrain(awayTeam, minute);
 
     homeTeam.ratings = calculateTeamRatings(homeTeam, awayTeam);
@@ -153,6 +157,16 @@ export function simulateMatch(
     }
 
     if (minute === 60) {
+      // Capture player stamina at pause minute
+      staminaSnapshot = homeTeam.players
+        .filter((p) => p.rolePosition !== 'GK')
+        .map((p) => ({
+          playerId: p.id,
+          name: p.name,
+          position: p.rolePosition,
+          stamina: Math.round(p.currentStamina),
+        }));
+
       const insight = buildMidMatchInsight(minute, homeTeam, awayTeam, stats);
       insights.push(insight);
       events.push({
@@ -358,10 +372,11 @@ export function simulateMatch(
     },
     insights,
     events,
+    ...(staminaSnapshot ? { playerStaminaSnapshot: staminaSnapshot } : {}),
   };
 }
 
-export function createTeamRuntime(team: TeamInput): TeamRuntime {
+export function createTeamRuntime(team: TeamInput, tacticsConfig?: TacticsConfig): TeamRuntime {
   const starters = team.players.filter((player) => !player.isSubstitute).slice(0, 11);
   const effectivePlayers: PlayerRuntime[] = (starters.length ? starters : team.players).map((player) => {
     const rolePos = player.rolePosition.toUpperCase();
@@ -394,6 +409,7 @@ export function createTeamRuntime(team: TeamInput): TeamRuntime {
       attackingThreat: { left: 50, center: 50, right: 50 },
       vulnerabilities: [], appliedRules: [],
     },
+    ...(tacticsConfig ? { tacticsConfig } : {}),
   };
   runtime.ratings = calculateTeamRatings(runtime);
   return runtime;
@@ -491,6 +507,35 @@ export function calculateTeamRatings(team: TeamRuntime, opponent?: TeamRuntime):
     pressingPower: (v) => { pressingPower = clamp(v, RATING_MIN, RATING_MAX); },
   }, { control, chanceCreation, defensiveWall, transitionDefense, pressingPower });
 
+  // ===== Tactical Sliders: fine-tune ratings from user slider values =====
+  if (team.tacticsConfig) {
+    const tc = normalizeTacticsConfig(team.tacticsConfig);
+    const pressDev = (tc.pressing - 50) / 50;
+    const lineDev = (tc.defensiveLine - 50) / 50;
+    const tempoDev = (tc.tempo - 50) / 50;
+    const widthDev = (tc.width - 50) / 50;
+
+    // Pressing: high → more pressing power & chance creation, less transition defense
+    pressingPower = clamp(pressingPower + pressDev * 12, RATING_MIN, RATING_MAX);
+    chanceCreation = clamp(chanceCreation + pressDev * 4, RATING_MIN, RATING_MAX);
+    transitionDefense = clamp(transitionDefense - pressDev * 6, RATING_MIN, RATING_MAX);
+
+    // Defensive line: high → more attacking threat but weaker defense & transition
+    defensiveWall = clamp(defensiveWall - lineDev * 8, RATING_MIN, RATING_MAX);
+    chanceCreation = clamp(chanceCreation + lineDev * 5, RATING_MIN, RATING_MAX);
+    transitionDefense = clamp(transitionDefense - lineDev * 7, RATING_MIN, RATING_MAX);
+
+    // Tempo: high → more chances, less control
+    chanceCreation = clamp(chanceCreation + tempoDev * 6, RATING_MIN, RATING_MAX);
+    control = clamp(control - tempoDev * 5, RATING_MIN, RATING_MAX);
+
+    // Width: wide → better flank attacks, worse center control & flank security
+    zonalSecurity.left = clamp(zonalSecurity.left - widthDev * 5, RATING_MIN, RATING_MAX);
+    zonalSecurity.right = clamp(zonalSecurity.right - widthDev * 5, RATING_MIN, RATING_MAX);
+    control = clamp(control - widthDev * 3, RATING_MIN, RATING_MAX);
+    chanceCreation = clamp(chanceCreation + widthDev * 4, RATING_MIN, RATING_MAX);
+  }
+
   const vulnerabilities: string[] = [];
   const leftExposure = detectFlankExposure(team.players, 'left', zonalSecurity.left);
   const rightExposure = detectFlankExposure(team.players, 'right', zonalSecurity.right);
@@ -500,6 +545,23 @@ export function calculateTeamRatings(team: TeamRuntime, opponent?: TeamRuntime):
   const midfielders = team.players.filter((p) => MIDFIELD_ROLES.has(p.rolePosition)).length;
   if (midfielders < 3) { vulnerabilities.push('MIDFIELD_OVERLOADED'); zonalSecurity.center = clamp(zonalSecurity.center * 0.88, RATING_MIN, RATING_MAX); control = clamp(control * 0.92, RATING_MIN, RATING_MAX); }
   if (transitionDefense < 55 && chanceCreation > 72) { vulnerabilities.push('TRANSITION_WEAK'); }
+
+  // ===== SPACE_BEHIND_DEFENSE: high line + slow CBs =====
+  if (team.tacticsConfig) {
+    const defLine = clampTacticValue(team.tacticsConfig.defensiveLine, 50);
+    if (defLine > 75) {
+      const cbs = team.players.filter((p) => ['CB', 'LCB', 'RCB'].includes(p.rolePosition));
+      if (cbs.length > 0) {
+        const cbPaces = cbs.map((p) => p.pac);
+        const avgCbPace = cbPaces.reduce((s, v) => s + v, 0) / cbPaces.length;
+        const slowestCbPace = Math.min(...cbPaces);
+        if (avgCbPace < 68 || slowestCbPace < 60) {
+          vulnerabilities.push('SPACE_BEHIND_DEFENSE');
+          transitionDefense = clamp(transitionDefense - 8, RATING_MIN, RATING_MAX);
+        }
+      }
+    }
+  }
 
   // ===== Столп 5: Rule Engine =====
   const appliedRuleIds: string[] = [];
@@ -623,6 +685,20 @@ function buildMidMatchInsight(
     });
   }
 
+  if (home.ratings.vulnerabilities.includes('SPACE_BEHIND_DEFENSE')) {
+    const cbs = home.players.filter((p) => ['CB', 'LCB', 'RCB'].includes(p.rolePosition));
+    const cbPaces = cbs.map((p) => p.pac);
+    const avgCbPace = cbs.length ? Math.round(cbPaces.reduce((s, v) => s + v, 0) / cbPaces.length) : 0;
+    const slowestCbPace = cbs.length ? Math.min(...cbPaces) : 0;
+    issues.push({
+      type: 'TACTICAL_VULNERABILITY',
+      severity: 'HIGH',
+      zone: 'center',
+      message: `High defensive line (${home.tacticsConfig?.defensiveLine ?? '?'}) with slow center-backs (avg pace ${avgCbPace}, slowest ${slowestCbPace}). Opponent's fast forwards are running in behind your defense.`,
+      suggestedActions: ['Lower defensive line', 'Use faster center-backs', 'Switch to a more compact defensive style'],
+    });
+  }
+
   if (home.ratings.vulnerabilities.includes('POSSESSION_BAD_PASSERS')) {
     issues.push({
       type: 'TACTICAL_VULNERABILITY',
@@ -669,10 +745,20 @@ function buildMidMatchInsight(
   };
 }
 
-function applyMinuteStaminaDrain(team: TeamRuntime, minute: number) {
+function applyMinuteStaminaDrain(team: TeamRuntime, minute: number, tacticsConfig?: TacticsConfig) {
   const styleMultiplier = styleStaminaMultiplier(team.tacticalStyle);
   const lateGamePenalty = minute >= 70 ? 1.20 : minute >= 55 ? 1.08 : 1;
   const midfieldLoad = calculateMidfieldLoad(team);
+
+  // Tactical sliders: smooth stamina drain multiplier
+  let sliderDrainMult = 1.0;
+  if (tacticsConfig) {
+    const tc = normalizeTacticsConfig(tacticsConfig);
+    const pressDev = Math.max(0, (tc.pressing - 50) / 50);      // 0..1
+    const tempoDev = Math.max(0, (tc.tempo - 50) / 50);
+    const lineDev = Math.max(0, (tc.defensiveLine - 50) / 50);
+    sliderDrainMult = (1 + pressDev * 0.15) * (1 + tempoDev * 0.10) * (1 + lineDev * 0.05);
+  }
 
   for (const player of team.players) {
     const isAttackingRole = ATTACKING_ROLES.has(player.rolePosition);
@@ -690,7 +776,7 @@ function applyMinuteStaminaDrain(team: TeamRuntime, minute: number) {
     // Lazy attackers themselves conserve energy (they aren't running back)
     const loadFactor = isLazy ? 0.90 : (isMidRole || isDefRole) ? midfieldLoad : 1.0;
 
-    const drain = 0.42 * styleMultiplier * roleLoad * lateGamePenalty * loadFactor * roleStaminaMult;
+    const drain = 0.42 * styleMultiplier * roleLoad * lateGamePenalty * loadFactor * roleStaminaMult * sliderDrainMult;
     player.currentStamina = clamp(player.currentStamina - drain, 12, 100);
   }
 }
@@ -1256,5 +1342,21 @@ function makeDefaultPlayer(
     stamina: 100,
     attackWorkRate,
     defenseWorkRate,
+  };
+}
+
+// ===== Tactical Sliders: safety helpers =====
+
+function clampTacticValue(value: number | undefined, fallback: number): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(1, Math.min(100, value));
+}
+
+function normalizeTacticsConfig(config: TacticsConfig): TacticsConfig {
+  return {
+    pressing: clampTacticValue(config.pressing, 50),
+    defensiveLine: clampTacticValue(config.defensiveLine, 50),
+    tempo: clampTacticValue(config.tempo, 50),
+    width: clampTacticValue(config.width, 50),
   };
 }

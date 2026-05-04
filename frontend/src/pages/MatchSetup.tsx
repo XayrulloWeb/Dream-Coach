@@ -6,6 +6,15 @@ import type { SimulationPlayer, SimulationTeam, TacticalStyle } from '../types/s
 
 const TOURNAMENT_NEXT_FIXTURE_KEY = 'dc_tournament_next_fixture';
 
+const PRESET_OPPONENTS = [
+  { name: 'Manchester City', formation: '4-3-3', style: 'POSSESSION' as TacticalStyle, ovrOffset: 3 },
+  { name: 'Real Madrid', formation: '4-3-3', style: 'COUNTER' as TacticalStyle, ovrOffset: 2 },
+  { name: 'Bayern Munich', formation: '4-2-3-1', style: 'HIGH_PRESS' as TacticalStyle, ovrOffset: 2 },
+  { name: 'Arsenal', formation: '4-3-3', style: 'HIGH_PRESS' as TacticalStyle, ovrOffset: 1 },
+  { name: 'Inter Milan', formation: '5-3-2', style: 'BALANCED' as TacticalStyle, ovrOffset: 0 },
+  { name: 'Local Club', formation: '4-4-2', style: 'LOW_BLOCK' as TacticalStyle, ovrOffset: -3 },
+];
+
 type TournamentFixtureHint = {
   round: number;
   opponentName: string;
@@ -60,11 +69,20 @@ export default function MatchSetup() {
   const [setupError, setSetupError] = useState('');
 
   const [opponentName, setOpponentName] = useState(
-    tournamentFixture?.opponentName ?? payload?.opponent?.name ?? '',
+    tournamentFixture?.opponentName ?? payload?.opponent?.name ?? 'Real Madrid',
   );
   const [venue, setVenue] = useState<'HOME' | 'AWAY' | 'NEUTRAL'>(payload?.venue ?? 'HOME');
-  const [opponentStyle, setOpponentStyle] = useState<TacticalStyle>(payload?.opponent?.tacticalStyle ?? 'BALANCED');
-  const [opponentFormation, setOpponentFormation] = useState(payload?.opponent?.formation ?? '4-2-3-1');
+  const [opponentStyle, setOpponentStyle] = useState<TacticalStyle>(payload?.opponent?.tacticalStyle ?? 'COUNTER');
+  const [opponentFormation, setOpponentFormation] = useState(payload?.opponent?.formation ?? '4-3-3');
+  
+  const [ovrOffset, setOvrOffset] = useState(2); // Track opponent offset for OVR calculation
+
+  const handleSelectPreset = (preset: typeof PRESET_OPPONENTS[0]) => {
+    setOpponentName(preset.name);
+    setOpponentFormation(preset.formation);
+    setOpponentStyle(preset.style);
+    setOvrOffset(preset.ovrOffset);
+  };
 
   if (!payload) {
     return (
@@ -95,6 +113,19 @@ export default function MatchSetup() {
     const opponent = createOpponentFromTeam(payload.team, opponentStyle);
     opponent.name = cleanOpponentName;
     opponent.formation = opponentFormation;
+    
+    // Apply OVR offset to opponent players to make them stronger/weaker
+    if (ovrOffset !== 0) {
+      opponent.players = opponent.players.map(p => ({
+        ...p,
+        pac: Math.max(30, Math.min(99, p.pac + ovrOffset)),
+        sho: Math.max(30, Math.min(99, p.sho + ovrOffset)),
+        pas: Math.max(30, Math.min(99, p.pas + ovrOffset)),
+        dri: Math.max(30, Math.min(99, p.dri + ovrOffset)),
+        def: Math.max(30, Math.min(99, p.def + ovrOffset)),
+        phy: Math.max(30, Math.min(99, p.phy + ovrOffset)),
+      }));
+    }
 
     const next = {
       ...payload,
@@ -153,7 +184,7 @@ export default function MatchSetup() {
               </div>
               <p className="font-['Lexend'] font-bold text-center text-white leading-tight">{opponentName}</p>
               <span className="text-[10px] uppercase font-bold text-[var(--color-on-surface-variant)] mt-1">{opponentFormation}</span>
-              <span className="text-xs font-bold text-[var(--color-blue-accent)] mt-1">~{currentOvr - 2} OVR</span>
+              <span className="text-xs font-bold text-[var(--color-blue-accent)] mt-1">~{Math.max(1, currentOvr - 2 + ovrOffset)} OVR</span>
             </div>
           </div>
         </section>
@@ -166,12 +197,33 @@ export default function MatchSetup() {
           </div>
 
             <Field label="Название соперника" icon="edit">
-            <input
-              value={opponentName}
-              onChange={(event) => setOpponentName(event.target.value)}
-              className="w-full bg-[var(--color-surface-container-high)] rounded-xl border border-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--color-primary)]/50 transition-colors"
+              <input
+                value={opponentName}
+                onChange={(event) => {
+                  setOpponentName(event.target.value);
+                  setOvrOffset(0); // Reset offset on manual edit
+                }}
+                className="w-full bg-[var(--color-surface-container-high)] rounded-xl border border-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--color-primary)]/50 transition-colors"
                 placeholder="Введи название соперника"
               />
+            </Field>
+
+            <Field label="Известные клубы" icon="local_fire_department">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+                {PRESET_OPPONENTS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() => handleSelectPreset(preset)}
+                    className={`shrink-0 snap-start py-2 px-4 rounded-xl text-xs font-bold transition-all border ${
+                      opponentName === preset.name
+                        ? 'bg-[var(--color-blue-accent)]/20 border-[var(--color-blue-accent)]/50 text-[var(--color-blue-accent)]'
+                        : 'bg-[var(--color-surface-container-high)] border-white/5 text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container-highest)]'
+                    }`}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
             </Field>
 
           <Field label="Стадион" icon="stadium">

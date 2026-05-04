@@ -144,11 +144,19 @@ export type TeamMatchStats = {
   bigChances: number;
 };
 
+export type TacticsConfig = {
+  pressing: number;      // 1-100
+  defensiveLine: number; // 1-100
+  tempo: number;         // 1-100
+  width: number;         // 1-100
+};
+
 export type SimulationInput = {
   team: TeamInput;
   opponent?: TeamInput;
   venue?: 'HOME' | 'AWAY' | 'NEUTRAL';
   realismFactor?: number; // 0.0 to 1.0, default 0.85 (85% logic, 15% noise)
+  tacticsConfig?: TacticsConfig;
 };
 
 // Compatibility aliases for legacy frontend modules
@@ -163,6 +171,25 @@ export type SimulationCalibration = {
   cardRateMultiplier: number;
   injuryRateMultiplier: number;
   zoneBias: Record<Zone, number>;
+};
+
+export type PlayerStaminaEntry = {
+  playerId: string;
+  name: string;
+  position: string;
+  stamina: number;
+};
+
+export type PlayerPauseStatus = 'FRESH' | 'OK' | 'TIRED' | 'CRITICAL';
+
+export type PlayerPauseState = {
+  playerId: string;
+  name: string;
+  position: string;
+  rating: number;
+  stamina: number;
+  status: PlayerPauseStatus;
+  reasons: string[];
 };
 
 export type SimulationResult = {
@@ -180,6 +207,7 @@ export type SimulationResult = {
   };
   insights: MidMatchInsight[];
   events: MatchEvent[];
+  playerStaminaSnapshot?: PlayerStaminaEntry[];
 };
 
 // Compatibility alias for local history helpers
@@ -236,6 +264,7 @@ export type MatchStateSnapshot = {
   };
   events: MatchEvent[];
   insights: ExplainableInsight[];
+  playerStates?: PlayerPauseState[];
 };
 
 export type MatchStartResponse = MatchStateSnapshot & {

@@ -17,6 +17,9 @@ import ComingSoon from './pages/ComingSoon';
 import SavedSquadsPage from './pages/SavedSquadsPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import CommunityChallenges from './pages/CommunityChallenges';
+import TournamentPage from './pages/TournamentPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import { hasCompletedOnboarding } from './lib/onboarding';
 
 function AppGate() {
@@ -159,7 +162,7 @@ function App() {
           path="/community-challenges"
           element={(
             <PrivateRoute>
-              <ComingSoon />
+              <CommunityChallenges />
             </PrivateRoute>
           )}
         />
@@ -199,7 +202,15 @@ function App() {
           path="/tournament"
           element={(
             <PrivateRoute>
-              <ComingSoon />
+              <TournamentPage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/leaderboard"
+          element={(
+            <PrivateRoute>
+              <LeaderboardPage />
             </PrivateRoute>
           )}
         />

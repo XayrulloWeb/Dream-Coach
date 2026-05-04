@@ -11,7 +11,10 @@ type PlayerCreateInput = {
   sourceDataset?: string;
   name: string;
   fullName?: string;
+  faceUrl?: string;
+  nationality?: string;
   age?: number;
+  heightCm?: number;
   realPosition: string;
   preferredPositions: string[];
   rating: number;
@@ -46,7 +49,10 @@ type MappingKey =
   | 'sourceDataset'
   | 'name'
   | 'fullName'
+  | 'faceUrl'
+  | 'nationality'
   | 'age'
+  | 'heightCm'
   | 'positions'
   | 'bestPosition'
   | 'rating'
@@ -103,7 +109,10 @@ const DEFAULT_ALIASES: PlayerColumnMapping = {
   sourceDataset: ['dataset', 'source'],
   name: ['name', 'short_name', 'player_name'],
   fullName: ['full_name', 'long_name'],
+  faceUrl: ['player_face_url', 'face_url', 'photo_url', 'image_url'],
+  nationality: ['nationality_name', 'nationality'],
   age: ['age'],
+  heightCm: ['height_cm', 'height'],
   positions: ['player_positions', 'positions', 'pos'],
   bestPosition: ['best_position', 'real_position', 'position', 'pos'],
   rating: ['overall', 'rating', 'ovr', 'rat'],
@@ -400,6 +409,8 @@ function normalizeHeader(value: string): string {
 function normalizeRow(row: CsvRow, mapping: PlayerColumnMapping): PlayerCreateInput | null {
   const name = pick(row, mapping.name);
   const fullName = pick(row, mapping.fullName);
+  const faceUrl = pick(row, mapping.faceUrl);
+  const nationality = pick(row, mapping.nationality);
   const positionsRaw = pick(row, mapping.positions);
   const bestPositionRaw = pick(row, mapping.bestPosition);
   const ratingRaw = pick(row, mapping.rating);
@@ -428,6 +439,7 @@ function normalizeRow(row: CsvRow, mapping: PlayerColumnMapping): PlayerCreateIn
   const phy = clampInt(pick(row, mapping.phy), 1, 99, rating);
   const stamina = clampInt(pick(row, mapping.stamina), 1, 100, 100);
   const age = optionalClampedInt(pick(row, mapping.age), 15, 50);
+  const heightCm = optionalClampedInt(pick(row, mapping.heightCm), 130, 230);
   const strength = optionalClampedInt(pick(row, mapping.strength), 1, 99);
   const vision = optionalClampedInt(pick(row, mapping.vision), 1, 99);
   const crossing = optionalClampedInt(pick(row, mapping.crossing), 1, 99);
@@ -446,7 +458,10 @@ function normalizeRow(row: CsvRow, mapping: PlayerColumnMapping): PlayerCreateIn
     ...(sourceDataset ? { sourceDataset } : {}),
     name,
     ...(fullName ? { fullName } : {}),
+    ...(faceUrl ? { faceUrl } : {}),
+    ...(nationality ? { nationality } : {}),
     ...(age !== null ? { age } : {}),
+    ...(heightCm !== null ? { heightCm } : {}),
     realPosition: primaryPosition,
     preferredPositions,
     rating,

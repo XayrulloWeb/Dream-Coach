@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, API_BASE_URL } from './api';
 
 export type PlayerCardDto = {
   id: string;
@@ -69,10 +69,12 @@ export async function fetchPlayers(params: {
 }
 
 function normalizePlayerCard(player: PlayerCardDto) {
+  const faceUrl = player.hasPhoto ? `${API_BASE_URL}/api/players/photo/${player.id}` : null;
+
   return {
     ...player,
     name: player.displayName,
-    faceUrl: player.photoUrl ?? null,
+    faceUrl,
     realPosition: player.primaryPosition,
     preferredPositions: player.positions,
     potential: player.rating,

@@ -12,10 +12,12 @@ import {
   MidMatchInsight,
   PlayerInput,
   PlayerMatchRating,
+  PlayerPauseState,
   SimulationInput,
   SimulationResult,
   SubstitutionAction,
   TacticalStyle,
+  TacticsConfig,
   TeamInput,
   TeamMatchStats,
   TeamVectors,
@@ -39,6 +41,7 @@ type MatchSession = {
   team: TeamInput;
   opponent: TeamInput;
   venue: 'HOME' | 'AWAY' | 'NEUTRAL';
+  tacticsConfig?: TacticsConfig;
   simulation: SimulationResult;
   pauseSnapshot: MatchStateSnapshot;
   hasSubstitutions: boolean;
@@ -52,9 +55,10 @@ export async function startStatefulMatch(input: SimulationInput): Promise<MatchS
   const team = cloneTeam(input.team);
   const opponent = cloneTeam(input.opponent ?? buildFallbackOpponent());
   const venue = input.venue ?? 'HOME';
+  const tacticsConfig = input.tacticsConfig;
 
   const calibration = await getActiveCalibration();
-  const simulation = simulateMatch({ team, opponent, venue }, calibration);
+  const simulation = simulateMatch({ team, opponent, venue, ...(tacticsConfig ? { tacticsConfig } : {}) }, calibration);
 
   const session: MatchSession = {
     id: matchId,
@@ -64,6 +68,7 @@ export async function startStatefulMatch(input: SimulationInput): Promise<MatchS
     team,
     opponent,
     venue,
+    ...(tacticsConfig ? { tacticsConfig } : {}),
     simulation,
     pauseSnapshot: {} as MatchStateSnapshot,
     hasSubstitutions: false,
@@ -144,6 +149,7 @@ export async function applyStatefulSubstitutions(
     team: nextTeam,
     opponent: session.opponent,
     venue: session.venue,
+    ...(session.tacticsConfig ? { tacticsConfig: session.tacticsConfig } : {}),
   }, calibration);
   session.hasSubstitutions = substitutions.length > 0 || Boolean(tacticalStyle);
 
@@ -237,6 +243,14 @@ function buildPauseSnapshot(session: MatchSession): MatchStateSnapshot {
   const stats = estimateStatsAtMinute(session.simulation, minute, events);
   const insights = withEvidence(session.team, session.simulation.insights, events, minute);
 
+  // Build real player states from engine stamina snapshot
+  const playerStates = buildPlayerPauseStates(
+    session.team,
+    session.simulation,
+    events,
+    minute,
+  );
+
   return {
     matchId: session.id,
     minute,
@@ -246,6 +260,7 @@ function buildPauseSnapshot(session: MatchSession): MatchStateSnapshot {
     ratings: session.simulation.ratings,
     events,
     insights,
+    ...(playerStates.length > 0 ? { playerStates } : {}),
   };
 }
 
@@ -922,4 +937,79 @@ function roundToTwo(value: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function buildPlayerPauseStates(
+  team: TeamInput,
+  simulation: SimulationResult,
+  events: MatchEvent[],
+  minute: number,
+): PlayerPauseState[] {
+  const staminaSnapshot = simulation.playerStaminaSnapshot;
+  if (!staminaSnapshot || staminaSnapshot.length === 0) {
+    return [];
+  }
+
+  const staminaMap = new Map(staminaSnapshot.map((e) => [e.playerId, e.stamina]));
+  const starters = team.players.filter((p) => !p.isSubstitute).slice(0, 11);
+
+  return starters.map((player) => {
+    const stamina = staminaMap.get(player.id) ?? estimateStamina(player, minute, team.tacticalStyle);
+    const staminaRound = Math.round(stamina);
+
+    // Interim rating
+    let rating = 6.5;
+    rating -= positionFitPenalty(player);
+
+    // Boost/penalty from events
+    for (const event of events) {
+      if (!event.player || event.team !== 'HOME') continue;
+      if (event.player !== player.name) continue;
+      if (event.type === 'GOAL') rating += 0.7;
+      if (event.type === 'SHOT' && event.message.includes('forced a save')) rating += 0.15;
+      if (event.type === 'SHOT' && event.message.includes('missed')) rating -= 0.08;
+      if (event.type === 'CARD') rating -= 0.15;
+      if (event.type === 'INJURY') rating -= 0.2;
+    }
+
+    // Stamina penalty on rating
+    if (staminaRound < 35) rating -= 0.3;
+    else if (staminaRound < 50) rating -= 0.1;
+
+    rating = clamp(Math.round(rating * 10) / 10, 3, 10);
+
+    // Status classification
+    const status: PlayerPauseState['status'] =
+      staminaRound >= 70 ? 'FRESH' :
+      staminaRound >= 50 ? 'OK' :
+      staminaRound >= 35 ? 'TIRED' :
+      'CRITICAL';
+
+    // Reasons
+    const reasons: string[] = [];
+    if (status === 'CRITICAL') reasons.push(`Stamina critically low (${staminaRound}%)`);
+    else if (status === 'TIRED') reasons.push(`Stamina dropping (${staminaRound}%)`);
+
+    if (positionFitPenalty(player) > 0) reasons.push('Playing out of position');
+
+    const playerGoals = events.filter((e) => e.type === 'GOAL' && e.team === 'HOME' && e.player === player.name).length;
+    if (playerGoals > 0) reasons.push(`Scored ${playerGoals} goal${playerGoals > 1 ? 's' : ''}`);
+
+    const playerCards = events.filter((e) => e.type === 'CARD' && e.team === 'HOME' && e.player === player.name).length;
+    if (playerCards > 0) reasons.push('Received yellow card');
+
+    if (player.attackWorkRate === 'HIGH' && player.defenseWorkRate === 'LOW') {
+      reasons.push('Low defensive work rate — not tracking back');
+    }
+
+    return {
+      playerId: player.id,
+      name: player.name,
+      position: player.rolePosition,
+      rating,
+      stamina: staminaRound,
+      status,
+      reasons,
+    };
+  });
 }

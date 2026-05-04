@@ -269,6 +269,7 @@ export default function Dashboard() {
   const lineup = useMemo(() => selectLineup(catalogPlayers), [catalogPlayers]);
   const savedLineup = useMemo(() => readSavedLineup(), []);
   const hasSavedLineup = savedLineup.starterBySlot.size >= 11;
+  const catalogById = useMemo(() => new Map(catalogPlayers.map((player) => [player.id, player] as const)), [catalogPlayers]);
   
   // Dynamic positioning based on formation
   const formationPositions: Record<string, Record<string, string>> = {
@@ -288,6 +289,24 @@ export default function Dashboard() {
       lw: 'top-[39%] left-[12%]', st: 'top-[12%] left-[35%]', rw: 'top-[39%] right-[12%]',
       lcm: 'top-[12%] right-[35%]', cdm: 'top-[40%] left-[35%]', rcm: 'top-[40%] right-[35%]',
       lb: 'top-[65%] left-[8%]', lcb: 'top-[67%] left-[33%]', rcb: 'top-[67%] right-[33%]', rb: 'top-[65%] right-[8%]',
+      gk: 'bottom-[5%] left-1/2 -translate-x-1/2'
+    },
+    '4-1-4-1': {
+      lw: 'top-[30%] left-[12%]', st: 'top-[9%] left-1/2 -translate-x-1/2', rw: 'top-[30%] right-[12%]',
+      lcm: 'top-[30%] left-[30%]', cdm: 'top-[45%] left-1/2 -translate-x-1/2', rcm: 'top-[30%] right-[30%]',
+      lb: 'top-[65%] left-[8%]', lcb: 'top-[67%] left-[33%]', rcb: 'top-[67%] right-[33%]', rb: 'top-[65%] right-[8%]',
+      gk: 'bottom-[5%] left-1/2 -translate-x-1/2'
+    },
+    '5-3-2': {
+      lw: 'top-[65%] left-[6%]', st: 'top-[12%] left-[35%]', rw: 'top-[12%] right-[35%]',
+      lcm: 'top-[35%] left-[25%]', cdm: 'top-[45%] left-1/2 -translate-x-1/2', rcm: 'top-[35%] right-[25%]',
+      lb: 'top-[65%] left-[25%]', lcb: 'top-[67%] left-1/2 -translate-x-1/2', rcb: 'top-[65%] right-[25%]', rb: 'top-[65%] right-[6%]',
+      gk: 'bottom-[5%] left-1/2 -translate-x-1/2'
+    },
+    '3-5-2': {
+      lw: 'top-[35%] left-[10%]', st: 'top-[12%] left-[35%]', rw: 'top-[12%] right-[35%]',
+      lcm: 'top-[35%] left-[30%]', cdm: 'top-[45%] left-1/2 -translate-x-1/2', rcm: 'top-[35%] right-[30%]',
+      lb: 'top-[35%] right-[10%]', lcb: 'top-[67%] left-[20%]', rcb: 'top-[67%] left-1/2 -translate-x-1/2', rb: 'top-[67%] right-[20%]',
       gk: 'bottom-[5%] left-1/2 -translate-x-1/2'
     }
   };
@@ -314,12 +333,12 @@ export default function Dashboard() {
           ...slot,
           name: player.name,
           rating: player.rating,
-          image: player.faceUrl ?? undefined,
+          image: player.faceUrl ?? catalogById.get(player.id)?.faceUrl ?? undefined,
           ring: 'primary' as const,
           containerClass: getPositionClass(slot.id)
         };
       }),
-    [savedLineup.starterBySlot, formation],
+    [savedLineup.starterBySlot, formation, catalogById],
   );
 
   const control = Math.round((tempo * 0.45 + width * 0.25 + 40) / 1.1);
@@ -341,6 +360,9 @@ export default function Dashboard() {
               <option value="4-3-3">4-3-3 Base</option>
               <option value="4-2-3-1">4-2-3-1 Attack</option>
               <option value="4-4-2">4-4-2 Flat</option>
+              <option value="4-1-4-1">4-1-4-1 Wide</option>
+              <option value="5-3-2">5-3-2 Defensive</option>
+              <option value="3-5-2">3-5-2 Attacking</option>
             </select>
             
             <div className="bg-[var(--color-surface-container-highest)] px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
@@ -467,6 +489,7 @@ export default function Dashboard() {
               ? { ...existing, team: { ...existing.team, formation, tacticalStyle: tacticalStyleFromPreset(preset) } }
               : buildSimulationPayloadFromStarters(lineup.startersForPayload, tacticalStyleFromPreset(preset), lineup.benchForPayload);
             payloadToSave.team.formation = formation;
+            payloadToSave.tacticsConfig = { pressing, defensiveLine, tempo, width };
 
             saveSquadPayload(payloadToSave);
             saveSquadSnapshot(payloadToSave);

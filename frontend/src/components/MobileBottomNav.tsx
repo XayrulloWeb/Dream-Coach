@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export type BottomTab = 'home' | 'squad' | 'match' | 'report' | 'more';
@@ -22,6 +22,7 @@ const MORE_MENU_ITEMS = [
   { icon: 'person', label: 'Профиль', path: '/profile' },
   { icon: 'history', label: 'История матчей', path: '/match-history' },
   { icon: 'save', label: 'Сохраненные составы', path: '/saved-squads' },
+  { icon: 'emoji_events', label: 'Таблица лидеров', path: '/leaderboard' },
   { icon: 'settings', label: 'Настройки', path: '/settings' },
 ];
 

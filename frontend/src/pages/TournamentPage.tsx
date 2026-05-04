@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { toApiError } from '../lib/api';
@@ -113,30 +113,23 @@ export default function TournamentPage() {
   }, [season]);
 
   return (
-    <AppShell title="Турнир" activeTab="more" hideHeader>
-      <header className="w-full z-40 bg-[var(--color-surface)] border-b border-white/5 pt-safe sticky top-0">
-        <div className="flex items-center px-5 py-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full mr-3"
-          >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          </button>
-          <div className="flex-1">
-            <h1 className="font-['Lexend'] text-lg text-white">Режим сезона</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--color-primary)] font-bold">Лига</p>
-          </div>
-          <button
-            onClick={() => void reload()}
-            className="w-10 h-10 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full"
-          >
-            <span className="material-symbols-outlined text-[20px]">refresh</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="px-5 py-6 space-y-6">
-        <section className="glass-panel rounded-2xl p-5">
+    <AppShell
+      title="Режим сезона"
+      headerSubtitle="Лига"
+      showBackButton
+      backTo="/dashboard"
+      activeTab="more"
+      headerRightElement={
+        <button
+          onClick={() => void reload()}
+          className="w-8 h-8 flex items-center justify-center text-[var(--color-on-surface-variant)] hover:text-white transition-colors bg-white/5 rounded-full"
+        >
+          <span className="material-symbols-outlined text-[20px]">refresh</span>
+        </button>
+      }
+      contentClassName="px-5 py-6 space-y-6"
+    >
+      <section className="glass-panel rounded-2xl p-5">
           <p className="text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] font-bold mb-4">Прогресс в лиге</p>
           {loading ? <p className="text-sm text-[var(--color-on-surface-variant)]">Загрузка турнира...</p> : null}
 
@@ -247,7 +240,6 @@ export default function TournamentPage() {
 
         {error ? <p className="text-xs text-[var(--color-danger)] text-center pb-4">Предупреждение API: {error}</p> : null}
         {message ? <p className="text-xs text-[var(--color-primary)] text-center pb-4">{message}</p> : null}
-      </main>
     </AppShell>
   );
 }

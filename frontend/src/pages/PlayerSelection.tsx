@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../lib/api';
@@ -10,8 +10,20 @@ import {
 } from '../lib/squad';
 import { saveSquadSnapshot } from '../lib/savedSquads';
 import type { TacticalStyle, TeamRatings } from '../types/simulation';
-import MobileBottomNav from '../components/MobileBottomNav';
+import AppShell from '../components/AppShell';
 import PlayerCard from '../components/PlayerCard';
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 
 type Slot = {
   id: string;
@@ -47,22 +59,79 @@ const BENCH_SLOTS: Slot[] = [
 ];
 
 const ALL_SLOTS = [...STARTER_SLOTS, ...BENCH_SLOTS];
-const STARTER_SLOT_IDS = new Set(STARTER_SLOTS.map((slot) => slot.id));
 const SLOT_LABEL_BY_ID = Object.fromEntries(ALL_SLOTS.map((slot) => [slot.id, slot.label])) as Record<string, string>;
 
-const PITCH_LAYOUT: { slotId: string, style: CSSProperties }[] = [
-  { slotId: 'lw', style: { position: 'absolute', top: '12%', left: '14%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'st', style: { position: 'absolute', top: '8%', left: '50%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'rw', style: { position: 'absolute', top: '12%', right: '14%', transform: 'translate(50%, -50%)' } },
-  { slotId: 'lcm', style: { position: 'absolute', top: '35%', left: '22%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'cdm', style: { position: 'absolute', top: '41%', left: '50%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'rcm', style: { position: 'absolute', top: '35%', right: '22%', transform: 'translate(50%, -50%)' } },
-  { slotId: 'lb', style: { position: 'absolute', top: '62%', left: '14%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'lcb', style: { position: 'absolute', top: '66%', left: '32%', transform: 'translate(-50%, -50%)' } },
-  { slotId: 'rcb', style: { position: 'absolute', top: '66%', right: '32%', transform: 'translate(50%, -50%)' } },
-  { slotId: 'rb', style: { position: 'absolute', top: '62%', right: '14%', transform: 'translate(50%, -50%)' } },
-  { slotId: 'gk', style: { position: 'absolute', bottom: '6%', left: '50%', transform: 'translate(-50%, -50%)' } },
-];
+const FORMATION_LAYOUTS: Record<string, { slotId: string, x: number, y: number }[]> = {
+  '4-3-3': [
+    { slotId: 'lw', x: 14, y: 15 }, { slotId: 'st', x: 50, y: 8 }, { slotId: 'rw', x: 86, y: 15 },
+    { slotId: 'lcm', x: 25, y: 40 }, { slotId: 'cdm', x: 50, y: 55 }, { slotId: 'rcm', x: 75, y: 40 },
+    { slotId: 'lb', x: 14, y: 75 }, { slotId: 'lcb', x: 35, y: 75 }, { slotId: 'rcb', x: 65, y: 75 }, { slotId: 'rb', x: 86, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ],
+  '4-2-3-1': [
+    { slotId: 'lw', x: 20, y: 35 }, { slotId: 'st', x: 50, y: 10 }, { slotId: 'rw', x: 80, y: 35 },
+    { slotId: 'lcm', x: 35, y: 55 }, { slotId: 'cdm', x: 50, y: 35 }, { slotId: 'rcm', x: 65, y: 55 },
+    { slotId: 'lb', x: 14, y: 75 }, { slotId: 'lcb', x: 35, y: 75 }, { slotId: 'rcb', x: 65, y: 75 }, { slotId: 'rb', x: 86, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ],
+  '4-4-2': [
+    { slotId: 'lw', x: 15, y: 45 }, { slotId: 'st', x: 35, y: 15 }, { slotId: 'rw', x: 85, y: 45 },
+    { slotId: 'lcm', x: 35, y: 45 }, { slotId: 'cdm', x: 65, y: 15 }, { slotId: 'rcm', x: 65, y: 45 },
+    { slotId: 'lb', x: 14, y: 75 }, { slotId: 'lcb', x: 35, y: 75 }, { slotId: 'rcb', x: 65, y: 75 }, { slotId: 'rb', x: 86, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ],
+  '4-1-4-1': [
+    { slotId: 'lw', x: 15, y: 35 }, { slotId: 'st', x: 50, y: 10 }, { slotId: 'rw', x: 85, y: 35 },
+    { slotId: 'lcm', x: 35, y: 35 }, { slotId: 'cdm', x: 50, y: 55 }, { slotId: 'rcm', x: 65, y: 35 },
+    { slotId: 'lb', x: 14, y: 75 }, { slotId: 'lcb', x: 35, y: 75 }, { slotId: 'rcb', x: 65, y: 75 }, { slotId: 'rb', x: 86, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ],
+  '5-3-2': [
+    { slotId: 'lw', x: 15, y: 50 }, { slotId: 'st', x: 35, y: 15 }, { slotId: 'rw', x: 85, y: 50 },
+    { slotId: 'lcm', x: 35, y: 45 }, { slotId: 'cdm', x: 65, y: 15 }, { slotId: 'rcm', x: 65, y: 45 },
+    { slotId: 'lb', x: 20, y: 75 }, { slotId: 'lcb', x: 50, y: 75 }, { slotId: 'rcb', x: 80, y: 75 }, { slotId: 'rb', x: 35, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ],
+  '3-5-2': [
+    { slotId: 'lw', x: 15, y: 35 }, { slotId: 'st', x: 35, y: 15 }, { slotId: 'rw', x: 85, y: 35 },
+    { slotId: 'lcm', x: 35, y: 50 }, { slotId: 'cdm', x: 65, y: 15 }, { slotId: 'rcm', x: 65, y: 50 },
+    { slotId: 'lb', x: 50, y: 35 }, { slotId: 'lcb', x: 20, y: 75 }, { slotId: 'rcb', x: 80, y: 75 }, { slotId: 'rb', x: 50, y: 75 },
+    { slotId: 'gk', x: 50, y: 94 },
+  ]
+};
+
+const INITIAL_PITCH_LAYOUT = FORMATION_LAYOUTS['4-3-3'];
+
+export function getRoleFromZone(x: number, y: number, defaultRole: string): string {
+  if (defaultRole === 'GK') return 'GK';
+  
+  const isLeft = x < 33;
+  const isRight = x > 66;
+  
+  const isAttack = y < 33;
+  const isMid = y >= 33 && y <= 66;
+  const isDefense = y > 66;
+  
+  if (isAttack) {
+    if (isLeft) return 'LW';
+    if (isRight) return 'RW';
+    return 'ST';
+  }
+  
+  if (isMid) {
+    if (isLeft) return 'LM';
+    if (isRight) return 'RM';
+    return y < 50 ? 'CAM' : (y > 60 ? 'CDM' : 'CM');
+  }
+  
+  if (isDefense) {
+    if (isLeft) return y < 75 ? 'LWB' : 'LB';
+    if (isRight) return y < 75 ? 'RWB' : 'RB';
+    return 'CB';
+  }
+  
+  return defaultRole;
+}
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
@@ -82,11 +151,79 @@ export default function PlayerSelection() {
   const [saveError, setSaveError] = useState('');
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [formation, setСхема] = useState('4-3-3');
+  const [formation, setFormation] = useState('4-3-3');
   const [tacticalStyle, setTacticalStyle] = useState<TacticalStyle>('BALANCED');
 
-  const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null);
-  const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
+  const [activeDragPlayer, setActiveDragPlayer] = useState<CatalogPlayer | null>(null);
+  const [activeDragSlot, setActiveDragSlot] = useState<Slot | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [pitchLayout, setPitchLayout] = useState(INITIAL_PITCH_LAYOUT);
+  const pitchRef = useRef<HTMLDivElement>(null);
+
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 5,
+    },
+  });
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 150,
+      tolerance: 5,
+    },
+  });
+  const sensors = useSensors(mouseSensor, touchSensor);
+
+  const onDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current;
+    if (data && data.player) {
+      setActiveDragPlayer(data.player);
+      const slot = ALL_SLOTS.find((s) => s.id === data.slotId);
+      if (slot) setActiveDragSlot(slot);
+    }
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over, delta } = event;
+    const fromSlotId = active.data.current?.slotId;
+    
+    if (!fromSlotId) return;
+
+    if (isEditMode) {
+      if (String(active.id).startsWith('pitch-')) {
+        const pitchRect = pitchRef.current?.getBoundingClientRect();
+        if (pitchRect) {
+          setPitchLayout((prev) =>
+            prev.map((item) => {
+              if (item.slotId === fromSlotId) {
+                const deltaXPct = (delta.x / pitchRect.width) * 100;
+                const deltaYPct = (delta.y / pitchRect.height) * 100;
+                return {
+                  ...item,
+                  x: Math.max(5, Math.min(95, item.x + deltaXPct)),
+                  y: Math.max(5, Math.min(95, item.y + deltaYPct)),
+                };
+              }
+              return item;
+            }),
+          );
+        }
+      }
+    } else {
+      if (over && over.data.current?.slotId) {
+        const toSlotId = over.data.current.slotId;
+        if (fromSlotId !== toSlotId) {
+          handleSlotSwap(fromSlotId, toSlotId);
+        }
+      }
+    }
+    setActiveDragPlayer(null);
+    setActiveDragSlot(null);
+  };
+
+  const onDragCancel = () => {
+    setActiveDragPlayer(null);
+    setActiveDragSlot(null);
+  };
 
   const selectedSlot = useMemo(
     () => ALL_SLOTS.find((slot) => slot.id === selectedSlotId) ?? STARTER_SLOTS[0],
@@ -105,9 +242,11 @@ export default function PlayerSelection() {
         return;
       }
 
-      const startersForPayload = STARTER_SLOTS.map((slot) =>
-        toPayloadPlayer(assignments[slot.id] as CatalogPlayer, slot.role),
-      );
+      const startersForPayload = STARTER_SLOTS.map((slot) => {
+        const layoutPos = pitchLayout.find((p) => p.slotId === slot.id);
+        const computedRole = layoutPos ? getRoleFromZone(layoutPos.x, layoutPos.y, slot.role) : slot.role;
+        return toPayloadPlayer(assignments[slot.id] as CatalogPlayer, computedRole);
+      });
 
       const payload = buildSimulationPayloadFromStarters(startersForPayload, tacticalStyle);
       payload.team.formation = formation;
@@ -127,7 +266,7 @@ export default function PlayerSelection() {
       active = false;
       clearTimeout(timeout);
     };
-  }, [assignments, formation, tacticalStyle]);
+  }, [assignments, formation, tacticalStyle, pitchLayout]);
 
   useEffect(() => {
     const existing = loadSquadPayload();
@@ -135,7 +274,7 @@ export default function PlayerSelection() {
       return;
     }
 
-    setСхема(existing.team.formation || '4-3-3');
+    setFormation(existing.team.formation || '4-3-3');
     if (existing.team.tacticalStyle) {
       setTacticalStyle(existing.team.tacticalStyle);
     }
@@ -245,9 +384,7 @@ export default function PlayerSelection() {
       return;
     }
 
-    if (!STARTER_SLOT_IDS.has(fromSlotId) || !STARTER_SLOT_IDS.has(toSlotId)) {
-      return;
-    }
+    // Allow bench swaps
 
     setAssignments((prev) => {
       const next: AssignmentMap = { ...prev };
@@ -270,9 +407,11 @@ export default function PlayerSelection() {
 
     // tacticalStyle is already in state
 
-    const startersForPayload = STARTER_SLOTS.map((slot) =>
-      toPayloadPlayer(assignments[slot.id] as CatalogPlayer, slot.role),
-    );
+    const startersForPayload = STARTER_SLOTS.map((slot) => {
+      const layoutPos = pitchLayout.find((p) => p.slotId === slot.id);
+      const computedRole = layoutPos ? getRoleFromZone(layoutPos.x, layoutPos.y, slot.role) : slot.role;
+      return toPayloadPlayer(assignments[slot.id] as CatalogPlayer, computedRole);
+    });
 
     const benchForPayload = BENCH_SLOTS
       .map((slot) => assignments[slot.id])
@@ -293,126 +432,104 @@ export default function PlayerSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-[#101415] text-[#e0e3e5] font-['Inter'] pb-24">
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
-        <header className="flex items-center justify-between">
-          <button onClick={() => navigate('/squad-builder')} className="text-[#9CA3AF]">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h1 className="font-['Lexend'] text-xl text-[#4be277]">ВЫБОР ИГРОКОВ</h1>
-          <div className="text-xs text-[#9CA3AF]">{assignedCount}/11</div>
-        </header>
+    <AppShell
+      title="ВЫБОР ИГРОКОВ"
+      showBackButton
+      backTo="/squad-builder"
+      hideBottomNav={pickerOpen}
+      activeTab="squad"
+      headerRightElement={<div className="text-xs text-[#9CA3AF] font-bold px-2">{assignedCount}/11</div>}
+      contentClassName="px-4 py-6 space-y-5"
+    >
 
         <section className="rounded-xl border border-[#3d4a3d] bg-[#1d2022] p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Активный слот</h2>
-            <p className="text-xs text-[#9CA3AF]">Перетаскивай карточки на поле для обмена. Нажми слот, чтобы выбрать игрока.</p>
-          </div>
-
-          <div className="relative w-full aspect-[4/5] bg-[#0a1a12] rounded-lg border border-[#1a3a24] overflow-hidden">
-            <div className="absolute inset-0 opacity-20 border border-white/30 m-4 rounded-sm" />
-            <div className="absolute top-1/2 left-4 right-4 h-px bg-white/30" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/30" />
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-40 h-24 border border-white/30 rounded-b-sm border-t-0" />
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-40 h-24 border border-white/30 rounded-t-sm border-b-0" />
-
-            {PITCH_LAYOUT.map((layout) => {
-              const slot = STARTER_SLOTS.find((item) => item.id === layout.slotId);
-              if (!slot) {
-                return null;
-              }
-
-              const player = assignments[slot.id];
-              const active = selectedSlotId === slot.id;
-              const over = dragOverSlotId === slot.id;
-
-              return (
+          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
+            <div className="flex flex-col gap-2 mb-2">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">Схема на поле</h2>
                 <button
-                  key={slot.id}
                   type="button"
-                  draggable={Boolean(player)}
-                  onDragStart={(event) => {
-                    if (!player) {
-                      return;
-                    }
-                    event.dataTransfer.effectAllowed = 'move';
-                    event.dataTransfer.setData('text/slot-id', slot.id);
-                    setDraggedSlotId(slot.id);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedSlotId(null);
-                    setDragOverSlotId(null);
-                  }}
-                  onDragOver={(event) => {
-                    if (!draggedSlotId || draggedSlotId === slot.id) {
-                      return;
-                    }
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = 'move';
-                    setDragOverSlotId(slot.id);
-                  }}
-                  onDragLeave={() => {
-                    if (dragOverSlotId === slot.id) {
-                      setDragOverSlotId(null);
-                    }
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const fromSlotId = event.dataTransfer.getData('text/slot-id') || draggedSlotId;
-                    if (fromSlotId) {
-                      handleSlotSwap(fromSlotId, slot.id);
-                    }
-                    setDraggedSlotId(null);
-                    setDragOverSlotId(null);
-                  }}
-                  onClick={() => {
-                    setSelectedSlotId(slot.id);
-                    setPickerOpen(true);
-                  }}
-                  style={{ ...layout.style, zIndex: 10 }}
-                  className="flex flex-col items-center"
-                >
-                  <div
-                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
-                      active
-                        ? 'border-[#4be277] bg-[#4be27722]'
-                        : over
-                        ? 'border-[#A3E635] bg-[#A3E63522]'
-                        : 'border-[#869585] bg-[#323537]'
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold text-[#e0e3e5]">{player ? player.rating : slot.label}</span>
-                  </div>
-                  <span className="text-[10px] mt-1 bg-[#1d2022cc] px-1 rounded max-w-[84px] truncate">
-                    {player?.name ?? slot.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {ALL_SLOTS.map((slot) => {
-              const assigned = assignments[slot.id];
-              const active = selectedSlotId === slot.id;
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => {
-                    setSelectedSlotId(slot.id);
-                    setPickerOpen(true);
-                  }}
-                  className={`text-left rounded-lg border p-2 ${
-                    active ? 'border-[#4be277] bg-[#4be2771f]' : 'border-[#3d4a3d] bg-[#111827]'
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  className={`text-xs px-3 py-1 rounded-full font-bold transition-colors ${
+                    isEditMode ? 'bg-[#ffb4ab] text-[#1d2022]' : 'bg-[#3d4a3d] text-white'
                   }`}
                 >
-                  <p className="text-[11px] text-[#9CA3AF] uppercase">{slot.label}</p>
-                  <p className="text-xs mt-1 truncate">{assigned?.name ?? '-'}</p>
-                  <p className="text-[11px] text-[#4be277] mt-1">{assigned ? assigned.rating : ''}</p>
+                  {isEditMode ? 'Закончить ред.' : 'Edit Formation'}
                 </button>
-              );
-            })}
-          </div>
+              </div>
+              <p className="text-xs text-[#9CA3AF]">
+                {isEditMode 
+                  ? 'Свободно перемещайте позиции по полю для кастомной схемы.'
+                  : 'Перетаскивай карточки для замен. Нажми слот, чтобы выбрать игрока.'}
+              </p>
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => setPitchLayout(INITIAL_PITCH_LAYOUT)}
+                  className="text-[10px] uppercase text-[#ffb4ab] self-start"
+                >
+                  Сбросить схему
+                </button>
+              )}
+            </div>
+
+            <div ref={pitchRef} className="relative w-full aspect-[4/5] bg-[#0a1a12] rounded-lg border border-[#1a3a24] overflow-hidden">
+              <div className="absolute inset-0 opacity-20 border border-white/30 m-4 rounded-sm" />
+              <div className="absolute top-1/2 left-4 right-4 h-px bg-white/30" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/30" />
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-40 h-24 border border-white/30 rounded-b-sm border-t-0" />
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-40 h-24 border border-white/30 rounded-t-sm border-b-0" />
+
+              {pitchLayout.map((layout) => {
+                const slot = STARTER_SLOTS.find((item) => item.id === layout.slotId);
+                if (!slot) return null;
+
+                const player = assignments[slot.id];
+                const active = selectedSlotId === slot.id;
+
+                return (
+                  <DraggablePitchSlot
+                    key={slot.id}
+                    slot={slot}
+                    player={player}
+                    active={active}
+                    style={{ position: 'absolute', top: `${layout.y}%`, left: `${layout.x}%`, transform: 'translate(-50%, -50%)' }}
+                    onClick={() => {
+                      setSelectedSlotId(slot.id);
+                      setPickerOpen(true);
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {ALL_SLOTS.map((slot) => {
+                const assigned = assignments[slot.id];
+                const active = selectedSlotId === slot.id;
+                return (
+                  <DraggableListSlot
+                    key={slot.id}
+                    slot={slot}
+                    player={assigned}
+                    active={active}
+                    onClick={() => {
+                      setSelectedSlotId(slot.id);
+                      setPickerOpen(true);
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            <DragOverlay dropAnimation={null}>
+              {activeDragPlayer && activeDragSlot ? (
+                <div className="w-12 h-12 rounded-full border-2 border-[#4be277] bg-[#4be277aa] flex items-center justify-center scale-110 shadow-lg">
+                  <span className="text-[10px] font-bold text-[#e0e3e5]">{activeDragPlayer.rating}</span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </section>
 
         <section className="rounded-xl border border-[#3d4a3d] bg-[#1d2022] p-4 space-y-3">
@@ -421,7 +538,13 @@ export default function PlayerSelection() {
               <p className="text-xs uppercase tracking-wider text-[#9CA3AF] mb-1">Схема</p>
               <select
                 value={formation}
-                onChange={(e) => setСхема(e.target.value)}
+                onChange={(e) => {
+                  const newFormation = e.target.value;
+                  setFormation(newFormation);
+                  if (FORMATION_LAYOUTS[newFormation]) {
+                    setPitchLayout(FORMATION_LAYOUTS[newFormation]);
+                  }
+                }}
                 className="w-full bg-[#111827] border border-[#334155] rounded-lg px-3 py-2 outline-none focus:border-[#4be277]"
               >
                 <option>4-3-3</option>
@@ -429,6 +552,7 @@ export default function PlayerSelection() {
                 <option>4-4-2</option>
                 <option>4-1-4-1</option>
                 <option>5-3-2</option>
+                <option>3-5-2</option>
               </select>
             </div>
             <div>
@@ -501,7 +625,7 @@ export default function PlayerSelection() {
                       <div key={idx} className="flex gap-2 items-start bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 p-3 rounded text-sm">
                         <span className="material-symbols-outlined text-[#ffb4ab] text-sm mt-0.5 shrink-0">warning</span>
                         <div className="space-y-1">
-                          <p className="text-[#ffb4ab] font-bold text-[11px] uppercase tracking-wider">{vuln.type.replace(/_/g, ' ')}</p>
+                          <p className="text-[#ffb4ab] font-bold text-[11px] uppercase tracking-wider">{vuln.type?.replace(/_/g, ' ') || 'WARNING'}</p>
                           <p className="text-[#e0e3e5] text-xs">{vuln.message}</p>
                           {vuln.suggestedActions && vuln.suggestedActions.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-[#ffb4ab]/20">
@@ -683,9 +807,7 @@ export default function PlayerSelection() {
             Сохранить выбор состава
           </button>
         </div>
-      </main>
-      {!pickerOpen ? <MobileBottomNav active="squad" /> : null}
-    </div>
+    </AppShell>
   );
 }
 
@@ -814,3 +936,104 @@ function getCandidatePositions(role?: string): Array<string | null> {
   return [normalized, ...fallbacks];
 }
 
+function DraggablePitchSlot({
+  slot,
+  player,
+  active,
+  style,
+  onClick,
+}: {
+  slot: Slot;
+  player: CatalogPlayer | null;
+  active: boolean;
+  style: CSSProperties;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+    id: `pitch-${slot.id}`,
+    data: { slotId: slot.id, player },
+    disabled: !player,
+  });
+
+  const { isOver, setNodeRef: setDroppableRef } = useDroppable({
+    id: `pitch-drop-${slot.id}`,
+    data: { slotId: slot.id },
+  });
+
+  const setRef = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
+  return (
+    <button
+      ref={setRef}
+      type="button"
+      onClick={onClick}
+      style={{ ...style, zIndex: isDragging ? 50 : 10, opacity: isDragging ? 0.3 : 1 }}
+      className="flex flex-col items-center touch-none"
+      {...listeners}
+      {...attributes}
+    >
+      <div
+        className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
+          active
+            ? 'border-[#4be277] bg-[#4be27722]'
+            : isOver
+            ? 'border-[#A3E635] bg-[#A3E63544] scale-110'
+            : 'border-[#869585] bg-[#323537]'
+        } transition-all duration-200`}
+      >
+        <span className="text-[10px] font-bold text-[#e0e3e5]">{player ? player.rating : slot.label}</span>
+      </div>
+      <span className="text-[10px] mt-1 bg-[#1d2022cc] px-1 rounded max-w-[84px] truncate pointer-events-none">
+        {player?.name ?? slot.label}
+      </span>
+    </button>
+  );
+}
+
+function DraggableListSlot({
+  slot,
+  player,
+  active,
+  onClick,
+}: {
+  slot: Slot;
+  player: CatalogPlayer | null;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+    id: `list-${slot.id}`,
+    data: { slotId: slot.id, player },
+    disabled: !player,
+  });
+
+  const { isOver, setNodeRef: setDroppableRef } = useDroppable({
+    id: `list-drop-${slot.id}`,
+    data: { slotId: slot.id },
+  });
+
+  const setRef = (node: HTMLElement | null) => {
+    setDraggableRef(node);
+    setDroppableRef(node);
+  };
+
+  return (
+    <button
+      ref={setRef}
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-lg border p-2 touch-none transition-all duration-200 ${
+        active ? 'border-[#4be277] bg-[#4be2771f]' : isOver ? 'border-[#A3E635] bg-[#A3E6352f] scale-[1.02]' : 'border-[#3d4a3d] bg-[#111827]'
+      } ${isDragging ? 'opacity-30' : 'opacity-100'}`}
+      {...listeners}
+      {...attributes}
+    >
+      <p className="text-[11px] text-[#9CA3AF] uppercase pointer-events-none">{slot.label}</p>
+      <p className="text-xs mt-1 truncate pointer-events-none">{player?.name ?? '-'}</p>
+      <p className="text-[11px] text-[#4be277] mt-1 pointer-events-none">{player ? player.rating : ''}</p>
+    </button>
+  );
+}

@@ -1,8 +1,9 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MobileBottomNav from '../components/MobileBottomNav';
+import AppShell from '../components/AppShell';
 import { loadSquadPayload } from '../lib/squad';
 import type { SimulationPlayer } from '../types/simulation';
+import PlayerRadarChart from '../components/PlayerRadarChart';
 
 function computeCardRating(player: SimulationPlayer): number {
   return Math.round((player.pac + player.sho + player.pas + player.dri + player.def + player.phy) / 6);
@@ -49,7 +50,7 @@ export default function PlayerProfile() {
 
   if (!active) {
     return (
-      <div className="min-h-screen bg-[#050A15] text-white px-4 py-8 pb-24">
+      <AppShell title="ПРОФИЛЬ ИГРОКА" hideHeader activeTab="squad" contentClassName="px-4 py-8">
         <h1 className="font-['Lexend'] text-2xl">Профиль игрока</h1>
         <p className="mt-3 text-slate-400">Состав не найден. Сначала собери состав.</p>
         <button
@@ -58,8 +59,7 @@ export default function PlayerProfile() {
         >
           Открыть выбор игроков
         </button>
-        <MobileBottomNav active="squad" />
-      </div>
+      </AppShell>
     );
   }
 
@@ -67,72 +67,62 @@ export default function PlayerProfile() {
   const rating = computeCardRating(active);
 
   return (
-    <div className="min-h-screen bg-[#050A15] text-white pb-24">
+    <AppShell
+      title="ПРОФИЛЬ ИГРОКА"
+      showBackButton
+      backTo="/player-selection"
+      activeTab="squad"
+      headerRightElement={<div className="w-8" />}
+      contentClassName="px-4 space-y-4 pt-4"
+    >
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_0%,rgba(34,197,94,0.16),transparent_40%),radial-gradient(circle_at_90%_10%,rgba(59,130,246,0.14),transparent_34%)]" />
 
-      <main className="relative z-10 max-w-5xl mx-auto px-4 pt-6 space-y-4">
-        <header className="flex items-center justify-between">
-          <button onClick={() => navigate('/player-selection')} className="text-slate-300">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h1 className="font-['Lexend'] text-xl text-emerald-300 tracking-wide">ПРОФИЛЬ ИГРОКА</h1>
-          <div className="w-8" />
-        </header>
-
-        <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{active.rolePosition}</p>
-              <h2 className="text-2xl font-semibold mt-1">{active.name}</h2>
-              <p className={`text-sm mt-2 ${fit.color}`}>{fit.text}</p>
-            </div>
-            <div className="rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 text-center">
-              <p className="text-xs text-slate-300">OVR</p>
-              <p className="text-3xl font-black text-emerald-300 leading-none mt-1">{rating}</p>
-            </div>
+      <section className="rounded-2xl border border-white/10 bg-[#08162B]/90 p-4 relative z-10">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{active.rolePosition}</p>
+            <h2 className="text-2xl font-semibold mt-1">{active.name}</h2>
+            <p className={`text-sm mt-2 ${fit.color}`}>{fit.text}</p>
           </div>
-
-          <div className="mt-4 grid grid-cols-3 gap-2 text-[12px]">
-            <Metric label="PAC" value={active.pac} />
-            <Metric label="SHO" value={active.sho} />
-            <Metric label="PAS" value={active.pas} />
-            <Metric label="DRI" value={active.dri} />
-            <Metric label="DEF" value={active.def} />
-            <Metric label="PHY" value={active.phy} />
+          <div className="rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 text-center">
+            <p className="text-xs text-slate-300">OVR</p>
+            <p className="text-3xl font-black text-emerald-300 leading-none mt-1">{rating}</p>
           </div>
+        </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-            <Meta label="Родная" value={active.naturalPosition} />
-            <Meta label="Роль" value={active.rolePosition} />
-            <Meta label="Выносливость" value={`${active.stamina}%`} />
-            <Meta label="Рабочая интенсивность" value={`${active.attackWorkRate}/${active.defenseWorkRate}`} />
-          </div>
-        </section>
+        <div className="mt-8 mb-4">
+          <PlayerRadarChart player={active} />
+        </div>
 
-        <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Игроки состава</p>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {players.map((player) => {
-              const selected = player.id === active.id;
-              return (
-                <button
-                  key={player.id}
-                  onClick={() => setActivePlayerId(player.id)}
-                  className={`rounded-lg border px-3 py-2 text-left ${
-                    selected ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-white/10 bg-[#0B1D38]'
-                  }`}
-                >
-                  <p className="text-sm font-semibold truncate">{player.name}</p>
-                  <p className="text-xs text-slate-400 mt-1">{player.rolePosition}</p>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      </main>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <Meta label="Родная" value={active.naturalPosition} />
+          <Meta label="Роль" value={active.rolePosition} />
+          <Meta label="Выносливость" value={`${active.stamina}%`} />
+          <Meta label="Рабочая интенсивность" value={`${active.attackWorkRate}/${active.defenseWorkRate}`} />
+        </div>
+      </section>
 
-      <MobileBottomNav active="squad" />
-    </div>
+      <section className="rounded-xl border border-white/10 bg-[#08162B]/90 p-4 relative z-10">
+        <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Игроки состава</p>
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {players.map((player) => {
+            const selected = player.id === active.id;
+            return (
+              <button
+                key={player.id}
+                onClick={() => setActivePlayerId(player.id)}
+                className={`rounded-lg border px-3 py-2 text-left ${
+                  selected ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-white/10 bg-[#0B1D38]'
+                }`}
+              >
+                <p className="text-sm font-semibold truncate">{player.name}</p>
+                <p className="text-xs text-slate-400 mt-1">{player.rolePosition}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </AppShell>
   );
 }
 

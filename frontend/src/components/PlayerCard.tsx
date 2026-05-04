@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { CatalogPlayer } from '../lib/players';
 import { calculatePositionFit } from '../lib/players';
 
@@ -102,6 +103,10 @@ function getFitTone(fit?: number): string {
 }
 
 function PlayerPortrait({ name, faceUrl }: { name: string; faceUrl?: string | null }) {
+  const sources = useMemo(() => buildPhotoSources(faceUrl), [faceUrl]);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const activeSrc = sources[sourceIndex];
+
   const initials = name
     .split(' ')
     .filter(Boolean)
@@ -111,13 +116,17 @@ function PlayerPortrait({ name, faceUrl }: { name: string; faceUrl?: string | nu
 
   return (
     <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#345083] bg-[#091123]">
-      {faceUrl ? (
+      {activeSrc ? (
         <img
-          src={faceUrl}
+          src={activeSrc}
           alt={name}
           className="h-full w-full object-cover"
           loading="lazy"
           onError={(event) => {
+            if (sourceIndex < sources.length - 1) {
+              setSourceIndex((prev) => prev + 1);
+              return;
+            }
             event.currentTarget.style.display = 'none';
           }}
         />
@@ -127,6 +136,34 @@ function PlayerPortrait({ name, faceUrl }: { name: string; faceUrl?: string | nu
       </div>
     </div>
   );
+}
+
+function buildPhotoSources(faceUrl?: string | null): string[] {
+  const raw = (faceUrl ?? '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  const sources = [raw];
+  const sofifaFallback = toSofifaOrgUrl(raw);
+  if (sofifaFallback && sofifaFallback !== raw) {
+    sources.push(sofifaFallback);
+  }
+
+  return Array.from(new Set(sources));
+}
+
+function toSofifaOrgUrl(url: string): string | null {
+  const match = url.match(/players\/(\d{3})\/(\d{3})\/(\d{2})_\d+\.png/i);
+  if (!match) {
+    return null;
+  }
+
+  const first = match[1];
+  const second = match[2];
+  const season = match[3];
+  const playerId = `${first}${second}`;
+  return `https://cdn.sofifa.org/players/4/${season}/${playerId}.png`;
 }
 
 function StatChip({ label, value }: { label: string; value: number }) {
